@@ -1,0 +1,35 @@
+name: cap
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - bzip2=1.0.8
+  - ca-certificates=2024.2.2
+  - libcxx=16.0.6
+  - libffi=3.4.2
+  - libsqlite=3.45.1
+  - libzlib=1.2.13
+  - mysql-common=8.0.33
+  - mysql-libs=8.0.33
+  - mysqlclient=2.2.3
+  - ncurses=6.4
+  - openssl=3.2.1
+  - pip=24.0
+  - python=3.9.18
+  - python_abi=3.9
+  - readline=8.2
+  - setuptools=69.0.3
+  - tk=8.6.13
+  - tzdata=2024a
+  - wheel=0.42.0
+  - xz=5.2.6
+  - zstd=1.5.5
+  - pip:
+      - asgiref==3.7.2
+      - django==4.2.8
+      - django-cors-headers==4.3.1
+      - djangorestframework==3.14.0
+      - python-dotenv==1.0.1
+      - pytz==2024.1
+      - sqlparse==0.4.4
+      - typing-extensions==4.9.0
