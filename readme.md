@@ -15,8 +15,8 @@ conda env create -f environment.yml
 conda create -n cap python=3.9.18
 pip install -r requirements.txt
 ```
-If you need install more package for backend service, add into the environment.yml and requirements.txt
-it would be easy to deploy to cloud
+If you need install more package for backend service, please add into package.md
+what package you install, and what service it provide
 
 
 
