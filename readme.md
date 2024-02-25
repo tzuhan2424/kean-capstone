@@ -40,5 +40,5 @@ HOST = XXXX
 ## Backend ENV
 create a .env.local file at frontend/
 <br>
-EACT_APP_ARCGIS_API_KEY="XXXXX"
+REACT_APP_ARCGIS_API_KEY="XXXXX"
 
