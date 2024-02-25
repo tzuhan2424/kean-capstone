@@ -2,6 +2,8 @@ import React, {useEffect, useState} from 'react'
 import { NavBar } from "./NavBar";
 import MapComponent  from "./MapComponent";
 import "./css/app.css"
+import axios from 'axios';
+
 
 const MainApp = () => {
   // json object
@@ -14,15 +16,30 @@ const MainApp = () => {
   ];
 
 
+  // backend testing
+  const [results, setResults] = useState([]);
 
-  const [message, setMessage] = useState('');
+
+
   useEffect(() => {
-    fetch('http://localhost:8000/api/test')
-      .then(response => response.json())
-      .then(data => setMessage(data.message))
-      .catch(error => console.error('Error:', error));
+    const genus = 'Karenia';
+    const species = 'brevis';
+    const fromDate = '2022-01-01';
+    const toDate = '2022-01-04';
+    axios.post('http://localhost:8000/api/searchHabsosDb', {
+      genus,
+      species,
+      fromDate,
+      toDate
+    })
+      .then(response => {
+        setResults(response.data);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
   }, []);
-  console.log(message);
+  console.log(results);
   
   
 
@@ -30,7 +47,7 @@ const MainApp = () => {
   return (
     <div className='main-app-container'>
         <NavBar/>
-        {/* <MapComponent points={pointsFromBackend}/> */}
+        <MapComponent points={results}/>
     </div>
   )
 }

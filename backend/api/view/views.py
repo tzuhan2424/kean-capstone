@@ -1,15 +1,18 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
-from ..models import Test, Sport
-from ..serializer.serializers import TestSerializer,SportSerializer
+from ..models import Test, Sport, HabsosT
+from ..serializer.serializers import TestSerializer,SportSerializer, HabsosTSerializer
 from rest_framework.views import APIView
-
+from django.db import connection
 from rest_framework.response import Response
 
 from django.db import connection
+from datetime import datetime
+import json
+
+from django.core.serializers import serialize
 
 # Create your views here.
-
 
 def hello(request):
     return HttpResponse("Hello, world. You're at the polls index.")
@@ -34,5 +37,35 @@ class sportList(APIView):
         return JsonResponse(sports_list, safe=False)
     
 
+
+
+class searchHabsosDb(APIView):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            
+            # Extract the search parameters from the JSON data
+            genus = data.get('genus')
+            species = data.get('species')
+            from_date_str = data.get('fromDate') + " 00:00:00"
+            to_date_str = data.get('toDate') + " 23:59:59"
+
+
+            # Use Django's ORM to query the database
+            queryset = HabsosT.objects.filter(
+                genus=genus,
+                species=species,
+                sample_datetime__gte=from_date_str,
+                sample_datetime__lte=to_date_str
+            )
+            # print(str(queryset.query))
+
+         
+            serializer = HabsosTSerializer(queryset, many=True)
+            return JsonResponse(serializer.data, safe=False)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except ValueError as e:
+            return JsonResponse({'error': str(e)}, status=400)
 
 

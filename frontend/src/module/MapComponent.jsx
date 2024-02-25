@@ -4,6 +4,7 @@ import MapView from '@arcgis/core/views/MapView';
 import Graphic from '@arcgis/core/Graphic';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import esriConfig from '@arcgis/core/config';
+import PopupTemplate from '@arcgis/core/PopupTemplate';
 
 import mapConfig from './config/mapConfig';
 
@@ -38,17 +39,21 @@ const MapComponent = ({points}) => {
     };
   }, []);
 
+
+
+  
   useEffect(() => {
     if (!graphicsLayer || !points) return;
 
     graphicsLayer.removeAll();
 
-    const attributes = {
-      name: "Point",
-      description: "I am a point"
-    }
     points.forEach(point => {
-      const { longitude, latitude } = point;
+      const { longitude, latitude, sample_date, description } = point;
+      const attributes = {
+      name: "Point",
+      description: description,
+      sample_date:  sample_date
+      }
       const pointGraphic = new Graphic({
 
         geometry: {
@@ -73,10 +78,22 @@ const MapComponent = ({points}) => {
 
     });
 
-    graphicsLayer.popupTemplate = {
+    graphicsLayer.popupTemplate = new PopupTemplate({
       title: "{name}",
-      content: "{description}"
-    };
+      content: [{
+        type: "fields",
+        fieldInfos: [
+          {
+            fieldName: "description",
+            label: "Description"
+          },
+          {
+            fieldName: "sample_date",
+            label: "Sample Date"
+          }
+        ]
+      }]
+    });
 
 
   }, [points, graphicsLayer]);

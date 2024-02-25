@@ -7,6 +7,6 @@ urlpatterns = [
     path("test", views.test, name="test"),
     path("testlist", views.testList.as_view(), name="testlist"),
     path("sportlist", views.sportList.as_view(), name="sportlist"),
-
+    path("searchHabsosDb", views.searchHabsosDb.as_view(), name="searchHabsosDb"),
 
 ]
