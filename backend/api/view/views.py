@@ -14,7 +14,10 @@ from django.db import connection
 def hello(request):
     return HttpResponse("Hello, world. You're at the polls index.")
 def test(request):
-    return HttpResponse("test")
+    test_data = {
+        'message': 'test'
+    }
+    return JsonResponse(test_data)
 
 class testList(APIView):
     def get(self, request):
