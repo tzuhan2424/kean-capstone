@@ -5,6 +5,7 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import {a11yProps, CustomTabPanel} from "./helper/NavarHelper";
+import SearchTab from './component/SearchTab';
 CustomTabPanel.propTypes = {
   children: PropTypes.node,
   index: PropTypes.number.isRequired,
@@ -14,19 +15,11 @@ CustomTabPanel.propTypes = {
 
 
 
-const NavBar = () => {
+const NavBar = ({ onDateChange, onSubmit }) => {
   const [value, setValue] = React.useState(0);
   const handleChange = (event, newValue) => {
     setValue(newValue);
   };
-
-
-
-
-
-
-
-
 
   return (
     <div id='navbar-container'>
@@ -38,7 +31,10 @@ const NavBar = () => {
             </Tabs>
           </Box>
           <CustomTabPanel value={value} index={0}>
-            Item One
+            <SearchTab 
+              onDateChange={onDateChange}
+              onSubmit = {onSubmit}
+            />
           </CustomTabPanel>
           <CustomTabPanel value={value} index={1}>
             Item Two

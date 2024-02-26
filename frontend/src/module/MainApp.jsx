@@ -3,9 +3,32 @@ import { NavBar } from "./NavBar";
 import MapComponent  from "./MapComponent";
 import "./css/app.css"
 import axios from 'axios';
-
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { formatDate } from './helper/MainAppHelper';
 
 const MainApp = () => {
+  // backend testing
+  const [results, setResults] = useState([]);
+  const [dates, setDates] = useState({ startDate: null, endDate: null });
+  const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
+
+  useEffect(() => {
+    // Assuming `formatDate` returns a string in 'YYYY-MM-DD' format
+    const formattedFromDate = dates.startDate ? formatDate(dates.startDate) : '';
+    const formattedToDate = dates.endDate ? formatDate(dates.endDate) : '';
+    setFormattedDate({ fromDate: formattedFromDate, toDate: formattedToDate });
+  }, [dates]); // Depend on `dates` to trigger this effect
+  
+  const handleDateChange = (newDate) => {
+    setDates(prevDates => ({ ...prevDates, ...newDate }));
+  };
+
+
+  console.log(formattedDate);
+  console.log("dates", dates);
+
+
   // json object
   const pointsFromBackend = [
     { longitude: -90.171561, latitude: 27.921820 },
@@ -16,29 +39,26 @@ const MainApp = () => {
   ];
 
 
-  // backend testing
-  const [results, setResults] = useState([]);
 
-
-
-  useEffect(() => {
+  const handleSubmit = () => {
     const genus = 'Karenia';
     const species = 'brevis';
-    const fromDate = '2022-01-01';
-    const toDate = '2022-01-04';
+    // const fromDate = '2022-01-01';
+    // const toDate = '2022-01-04';
     axios.post('http://localhost:8000/api/searchHabsosDb', {
       genus,
       species,
-      fromDate,
-      toDate
+      fromDate: formattedDate.fromDate,
+      toDate: formattedDate.toDate,
     })
-      .then(response => {
-        setResults(response.data);
-      })
-      .catch(error => {
-        console.error('Error:', error);
-      });
-  }, []);
+    .then(response => {
+      setResults(response.data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+  };
+
   console.log(results);
   
   
@@ -46,7 +66,9 @@ const MainApp = () => {
 
   return (
     <div className='main-app-container'>
-        <NavBar/>
+        <NavBar 
+          onDateChange={handleDateChange} 
+          onSubmit={handleSubmit}/>
         <MapComponent points={results}/>
     </div>
   )

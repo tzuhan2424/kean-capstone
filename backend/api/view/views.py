@@ -49,7 +49,8 @@ class searchHabsosDb(APIView):
             species = data.get('species')
             from_date_str = data.get('fromDate') + " 00:00:00"
             to_date_str = data.get('toDate') + " 23:59:59"
-
+            # print('from_date_str', from_date_str)
+            # print('to_date_str', to_date_str)
 
             # Use Django's ORM to query the database
             queryset = HabsosT.objects.filter(
