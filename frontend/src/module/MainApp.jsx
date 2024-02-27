@@ -62,10 +62,12 @@ const MainApp = () => {
       .catch(error => {
         console.error('Error:', error);
       });
+    }else{
+      console.log('validation fail');
     }
   };
 
-  console.log(results);
+  // console.log(results);
   
   
 
