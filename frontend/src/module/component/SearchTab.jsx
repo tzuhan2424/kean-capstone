@@ -4,54 +4,40 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate } from '../helper/MainAppHelper';
 import { passDateCheck,passDateRangeCheck } from '../helper/MainAppHelper';
 
-const SearchTab = ({ onDateChange, onSubmit }) => {
-  const [fromDate, setFromDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
+const SearchTab = ({ onDateChange, onSubmit, dates }) => {
+
   const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
-  
   const [fromDateValidationError, setFromDateValidationError] = useState(''); 
   const [endDateValidationError, setEndDateValidationError] = useState(''); 
   const [DateValidationError, setDateValidationError] = useState(''); 
 
   useEffect(() => {
     // Assuming `formatDate` returns a string in 'YYYY-MM-DD' format
-    const formattedFromDate = fromDate ? formatDate(fromDate) : '';
-    const formattedToDate = endDate ? formatDate(endDate) : '';
+    const formattedFromDate = dates.startDate ? formatDate(dates.startDate) : '';
+    const formattedToDate = dates.endDate ? formatDate(dates.endDate) : '';
     setFormattedDate({ fromDate: formattedFromDate, toDate: formattedToDate });
-  }, [fromDate, endDate]);
+  }, [dates]);
 
 
 
   useEffect(() => {
-    // console.log('fromDate', fromDate);
-    // Only run validation if fromDate has been set
-    if (fromDate) {
+    if (dates.startDate) {
       if (formattedDate.fromDate && !passDateCheck(formattedDate.fromDate)) {
         setFromDateValidationError('Invalid start date: 1955-3000');
       } else {
         setFromDateValidationError('');
       }
     }
-
-    // Only run validation if endDate has been set
-    if (endDate) {
+    if (dates.endDate) {
       if (formattedDate.toDate && !passDateCheck(formattedDate.toDate)) {
         setEndDateValidationError('Invalid end date: 1955-3000');
       } else {
         setEndDateValidationError('');
       }
     }
-  }, [formattedDate, fromDate, endDate]);
-
-
-  // console.log('searchTab from', fromDate);
-  // console.log('searchTab end ', endDate);
-  // console.log('seach!!',formattedDate );
-
-
+  }, [formattedDate]);
 
   const handleSubmit = () => {
-
     if (passDateCheck(formattedDate.fromDate) && passDateCheck(formattedDate.toDate) 
         && passDateRangeCheck(formattedDate.fromDate, formattedDate.toDate)) {
           onSubmit(); // Call the passed onSubmit prop function
@@ -67,29 +53,27 @@ const SearchTab = ({ onDateChange, onSubmit }) => {
         <div className = 'date-range-picker'>
             <div>From:</div>
             <DatePicker
-                selected={fromDate}
+                selected={dates.startDate}
                 onChange={(date) => {
                     onDateChange({ startDate: date });
-                    setFromDate(date);
                   }}                
                 selectsStart
-                startDate={fromDate}
-                endDate={endDate}
+                startDate={dates.startDat}
+                endDate={dates.endDate}
                 dropdownMode="select"
             />
             {fromDateValidationError && <div style={{ color: 'red' }}>{fromDateValidationError}</div>}
 
             <div>To: </div>
             <DatePicker
-                selected={endDate}
+                selected={dates.endDate}
                 onChange={(date) => {
                     onDateChange({ endDate: date });
-                    setEndDate(date);
                   }}                 
                 selectsEnd
-                startDate={fromDate}
-                endDate={endDate}
-                minDate={fromDate}
+                startDate={dates.startDate}
+                endDate={dates.endDate}
+                minDate={dates.startDate}
                 dropdownMode="select"
             />
             {endDateValidationError && <div style={{ color: 'red' }}>{endDateValidationError}</div>}

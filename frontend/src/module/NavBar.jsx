@@ -15,7 +15,7 @@ CustomTabPanel.propTypes = {
 
 
 
-const NavBar = ({ onDateChange, onSubmit }) => {
+const NavBar = ({ onDateChange, onSubmit, dates}) => {
   const [value, setValue] = React.useState(0);
   const handleChange = (event, newValue) => {
     setValue(newValue);
@@ -34,6 +34,7 @@ const NavBar = ({ onDateChange, onSubmit }) => {
             <SearchTab 
               onDateChange={onDateChange}
               onSubmit = {onSubmit}
+              dates = {dates}
             />
           </CustomTabPanel>
           <CustomTabPanel value={value} index={1}>

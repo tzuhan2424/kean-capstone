@@ -8,15 +8,20 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate, passDateCheck, passDateRangeCheck } from './helper/MainAppHelper';
 
 const MainApp = () => {
-  // backend testing
   const [results, setResults] = useState([]);
-  const [dates, setDates] = useState({ startDate: null, endDate: null });
+  // const [dates, setDates] = useState({ startDate: null, endDate: null });
   const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
 
+  const [isLoading, setIsLoading] = useState(false);
+  const [recordCount, setRecordCount] = useState(0);
 
+  const [dates, setDates] = useState({
+    startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+    endDate: new Date(),
+  });
+  const [hasFetchedInitialData, setHasFetchedInitialData] = useState(false);
 
   useEffect(() => {
-    // Assuming `formatDate` returns a string in 'YYYY-MM-DD' format
     const formattedFromDate = dates.startDate ? formatDate(dates.startDate) : '';
     const formattedToDate = dates.endDate ? formatDate(dates.endDate) : '';
     setFormattedDate({ fromDate: formattedFromDate, toDate: formattedToDate });
@@ -27,45 +32,37 @@ const MainApp = () => {
   };
 
 
-  console.log(formattedDate);
-  console.log("dates", dates);
-
-
-  // json object
-  const pointsFromBackend = [
-    { longitude: -90.171561, latitude: 27.921820 },
-    { longitude: -85.172061, latitude: 26.920320 },
-    { longitude: -86.170261, latitude: 23.920620 },
-    { longitude: -83.170961, latitude: 27.922920 },
-    { longitude: -84.171261, latitude: 21.921420 }
-  ];
-
-
-
-  const handleSubmit = () => {
+  const FetchData = (fromDate, toDate) => {
+    setIsLoading(true); // Start loading
     const genus = 'Karenia';
     const species = 'brevis';
-    // axios.post('http://localhost:8000/api/searchHabsosDb', {
-    //   genus,
-    //   species,
-    //   fromDate: '2022-01-02',
-    //   toDate: '2022-01-04',
-    // })
     axios.post('http://localhost:8000/api/searchHabsosDb', {
       genus,
-      species,
-      fromDate: formattedDate.fromDate,
-      toDate: formattedDate.toDate,
+      species,      
+      fromDate,
+      toDate,
     })
     .then(response => {
       setResults(response.data);
+      setRecordCount(response.data.length); // Update record count based on response
+      setIsLoading(false); // Stop loading
     })
     .catch(error => {
       console.error('Error:', error);
+      setIsLoading(false); // Stop loading in case of error
     });
-    
+  };
 
-    };
+  useEffect(() => {
+    if (!hasFetchedInitialData && formattedDate.fromDate && formattedDate.toDate) {
+      FetchData(formattedDate.fromDate, formattedDate.toDate);
+      setHasFetchedInitialData(true);
+    }
+  }, [formattedDate, hasFetchedInitialData]);
+
+  const handleSubmit = () => {
+    FetchData(formattedDate.fromDate, formattedDate.toDate);
+  };
 
   // console.log(results);
   
@@ -76,7 +73,15 @@ const MainApp = () => {
     <div className='main-app-container'>
         <NavBar 
           onDateChange={handleDateChange} 
-          onSubmit={handleSubmit}/>
+          onSubmit={handleSubmit}
+          dates={dates}/>
+    {/* <div style={{ position: 'relative', zIndex: 9999 }}> 
+      {isLoading ? (
+        <p>Loading...</p>
+      ) : (
+        <p>Fetched {recordCount} records.</p>
+      )} 
+    </div>  */}
         <MapComponent points={results}/>
     </div>
   )

@@ -4,7 +4,6 @@ import MapView from '@arcgis/core/views/MapView';
 import Graphic from '@arcgis/core/Graphic';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import esriConfig from '@arcgis/core/config';
-import PopupTemplate from '@arcgis/core/PopupTemplate';
 import  SimpleMarkerSymbol  from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import  SimpleLineSymbol  from '@arcgis/core/symbols/SimpleLineSymbol';
 import Color from '@arcgis/core/Color';
@@ -29,7 +28,7 @@ const MapComponent = ({ points }) => {
       zoom: mapConfig.zoom,
     });
 
-    const graphicsLayer = new GraphicsLayer();
+    const graphicsLayer = new GraphicsLayer({ id: 'graphicsLayer' });
     map.add(graphicsLayer);
 
     setMapView(view);
