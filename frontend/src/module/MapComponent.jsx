@@ -5,6 +5,9 @@ import Graphic from '@arcgis/core/Graphic';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import esriConfig from '@arcgis/core/config';
 import PopupTemplate from '@arcgis/core/PopupTemplate';
+import  SimpleMarkerSymbol  from '@arcgis/core/symbols/SimpleMarkerSymbol';
+import  SimpleLineSymbol  from '@arcgis/core/symbols/SimpleLineSymbol';
+import Color from '@arcgis/core/Color';
 
 import mapConfig from './config/mapConfig';
 import './css/map.css';
@@ -50,7 +53,84 @@ const MapComponent = ({ points }) => {
     graphicsLayer.removeAll();
 
     points.forEach(point => {
-      const { longitude, latitude, ...attributes } = point;
+      const { longitude, latitude, category, ...otherAttributes } = point;
+      const attributes = {
+        ...otherAttributes,
+        category, longitude, latitude
+      };
+      let symbol;
+
+      switch (category) {
+        case "not observed":
+          symbol = new SimpleMarkerSymbol({
+            style: "x",
+            size: 6,
+            color: new Color([255, 255, 255, 1]),
+            outline: { // autocasts as new SimpleLineSymbol()
+              color: new Color([0, 0, 0]),
+              width: 1
+            }
+          });
+          break;
+        case "very low":
+          symbol = new SimpleMarkerSymbol({
+            style: "circle",
+            size: 6,
+            color: new Color([255, 255, 255, 1]),
+            outline: {
+              color: new Color([0, 0, 0]),
+              width: 0.75
+            }
+          });
+          break;
+        case "low":
+          symbol = new SimpleMarkerSymbol({
+            style: "circle",
+            size: 10,
+            color: new Color([255, 255, 0, 1]),
+            outline: {
+              color: new Color([0, 0, 0]),
+              width: 1
+            }
+          });
+          break;
+        case "medium":
+          symbol = new SimpleMarkerSymbol({
+            style: "circle",
+            size: 14,
+            color: new Color([255, 125, 0, 1]),
+            outline: {
+              color: new Color([0, 0, 0]),
+              width: 1
+            }
+          });
+          break;
+        case "high":
+          symbol = new SimpleMarkerSymbol({
+            style: "circle",
+            size: 18,
+            color: new Color([255, 0, 0, 1]),
+            outline: {
+              color: new Color([0, 0, 0]),
+              width: 1
+            }
+          });
+          break;
+        // Default case to handle unexpected categories
+        default:
+          symbol = new SimpleMarkerSymbol({
+            style: "circle",
+            size: 6,
+            color: new Color([200, 200, 200, 1]),
+            outline: {
+              color: new Color([0, 0, 0]),
+              width: 1
+            }
+          });
+      }
+  
+
+
 
       const pointGraphic = new Graphic({
         geometry: {
@@ -58,28 +138,26 @@ const MapComponent = ({ points }) => {
           longitude,
           latitude
         },
-        symbol: {
-          type: 'simple-marker',
-          color: [226, 119, 40], // Orange
-          outline: { color: [255, 255, 255], width: 1 },
-          size: "8px"
-        },
+        symbol: symbol,
+
         attributes,
         popupTemplate: {
-          title: "{name}",
+          title: "{description}",
           content: [{
             type: "fields",
             fieldInfos: [
+              { fieldName: "longitude", label: "longitude" },
+              { fieldName: "latitude", label: "latitude" },
               { fieldName: "genus", label: "genus" },
               { fieldName: "species", label: "species" },
               { fieldName: "category", label: "category"},
               { fieldName: "description", label: "Description" },
               { fieldName: "sample_date", label: "Sample Date" },
-              { fieldName: "cellcount", label: "Cell Count" },
+              { fieldName: "cellcount", label: "Cell Count(cells/L)" },
               { fieldName: "salinity", label: "Salinity (ppt)" },
               { fieldName: "water_temp", label: "Water Temperature (°C)" },
               { fieldName: "wind_dir", label: "Wind Direction" },
-              { fieldName: "wind_speed", label: "Wind Speed (km/h)" }
+              { fieldName: "wind_speed", label: "Wind Speed (miles/h)" }
             ]
           }]
         }
