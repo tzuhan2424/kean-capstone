@@ -8,6 +8,7 @@ const SearchTab = ({ onDateChange, onSubmit }) => {
   const [fromDate, setFromDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
+  
   const [fromDateValidationError, setFromDateValidationError] = useState(''); 
   const [endDateValidationError, setEndDateValidationError] = useState(''); 
   const [DateValidationError, setDateValidationError] = useState(''); 

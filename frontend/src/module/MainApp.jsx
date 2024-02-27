@@ -45,7 +45,12 @@ const MainApp = () => {
   const handleSubmit = () => {
     const genus = 'Karenia';
     const species = 'brevis';
-
+    // axios.post('http://localhost:8000/api/searchHabsosDb', {
+    //   genus,
+    //   species,
+    //   fromDate: '2022-01-02',
+    //   toDate: '2022-01-04',
+    // })
     axios.post('http://localhost:8000/api/searchHabsosDb', {
       genus,
       species,
