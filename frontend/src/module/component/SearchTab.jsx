@@ -44,6 +44,7 @@ const SearchTab = ({ onDateChange, onSubmit, dates }) => {
           setDateValidationError('');
 
     }else{
+
         setDateValidationError('invalid input range');
     }
   };

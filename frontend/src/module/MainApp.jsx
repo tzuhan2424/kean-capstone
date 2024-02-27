@@ -75,13 +75,15 @@ const MainApp = () => {
           onDateChange={handleDateChange} 
           onSubmit={handleSubmit}
           dates={dates}/>
-    {/* <div style={{ position: 'relative', zIndex: 9999 }}> 
-      {isLoading ? (
-        <p>Loading...</p>
-      ) : (
-        <p>Fetched {recordCount} records.</p>
-      )} 
-    </div>  */}
+
+        <div id ='fetch-loading-box'> 
+          {isLoading ? (
+            <div style={{ color: 'red' }}>Loading... Please wait...</div>
+          ) : (
+            <div>Fetched {recordCount} records.</div>
+          )} 
+        </div> 
+
         <MapComponent points={results}/>
     </div>
   )
