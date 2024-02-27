@@ -13,6 +13,8 @@ const MainApp = () => {
   const [dates, setDates] = useState({ startDate: null, endDate: null });
   const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
 
+
+
   useEffect(() => {
     // Assuming `formatDate` returns a string in 'YYYY-MM-DD' format
     const formattedFromDate = dates.startDate ? formatDate(dates.startDate) : '';
@@ -43,29 +45,22 @@ const MainApp = () => {
   const handleSubmit = () => {
     const genus = 'Karenia';
     const species = 'brevis';
-    // const fromDate = '2022-01-01';
-    // const toDate = '2022-01-04';
 
-    // Validate dates
-    if (passDateCheck(formattedDate.fromDate)
-        && passDateCheck(formattedDate.toDate)
-        && passDateRangeCheck(formattedDate.fromDate, formattedDate.toDate)) {
-      axios.post('http://localhost:8000/api/searchHabsosDb', {
-        genus,
-        species,
-        fromDate: formattedDate.fromDate,
-        toDate: formattedDate.toDate,
-      })
-      .then(response => {
-        setResults(response.data);
-      })
-      .catch(error => {
-        console.error('Error:', error);
-      });
-    }else{
-      console.log('validation fail');
-    }
-  };
+    axios.post('http://localhost:8000/api/searchHabsosDb', {
+      genus,
+      species,
+      fromDate: formattedDate.fromDate,
+      toDate: formattedDate.toDate,
+    })
+    .then(response => {
+      setResults(response.data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+    
+
+    };
 
   // console.log(results);
   

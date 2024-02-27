@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate } from '../helper/MainAppHelper';
-import { passDateCheck } from '../helper/MainAppHelper';
+import { passDateCheck,passDateRangeCheck } from '../helper/MainAppHelper';
 
 const SearchTab = ({ onDateChange, onSubmit }) => {
   const [fromDate, setFromDate] = useState(null);
@@ -10,6 +10,7 @@ const SearchTab = ({ onDateChange, onSubmit }) => {
   const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
   const [fromDateValidationError, setFromDateValidationError] = useState(''); 
   const [endDateValidationError, setEndDateValidationError] = useState(''); 
+  const [DateValidationError, setDateValidationError] = useState(''); 
 
   useEffect(() => {
     // Assuming `formatDate` returns a string in 'YYYY-MM-DD' format
@@ -49,7 +50,15 @@ const SearchTab = ({ onDateChange, onSubmit }) => {
 
 
   const handleSubmit = () => {
-    onSubmit(); // Call the passed onSubmit prop function
+
+    if (passDateCheck(formattedDate.fromDate) && passDateCheck(formattedDate.toDate) 
+        && passDateRangeCheck(formattedDate.fromDate, formattedDate.toDate)) {
+          onSubmit(); // Call the passed onSubmit prop function
+          setDateValidationError('');
+
+    }else{
+        setDateValidationError('invalid input range');
+    }
   };
 
   return (
@@ -83,6 +92,7 @@ const SearchTab = ({ onDateChange, onSubmit }) => {
                 dropdownMode="select"
             />
             {endDateValidationError && <div style={{ color: 'red' }}>{endDateValidationError}</div>}
+            {DateValidationError && <div style={{ color: 'red' }}>{DateValidationError}</div>}
 
         </div>
         <button onClick={handleSubmit}>Submit</button>
