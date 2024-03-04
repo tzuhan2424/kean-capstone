@@ -51,10 +51,6 @@ if __name__ == "__main__":
     model.fit(X_train_scaled, y_train)
 
 
-
-    model.fit(X_train, y_train)
-
-
     y_pred = model.predict(X_test_scaled)
     print("Accuracy:", accuracy_score(y_test, y_pred))
     print(classification_report(y_test, y_pred))
