@@ -4,6 +4,7 @@ import urllib3
 import datetime
 import MySQLdb
 import time
+import sys
 from settings import DATABASES
 
 
@@ -13,6 +14,7 @@ class ETLLogger:
         self._file = None
 
         if log_file_dir is not None:
+            # Append time to log file name to make it unique
             self._file = open(f'{log_file_dir}/etl_log_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.txt', 'w')
 
     def __del__(self):
@@ -55,15 +57,20 @@ class _LogToken:
 
 
 class HABDataETLHelper:
-    _columns = ['LATITUDE', 'LONGITUDE', 'SAMPLE_DATE', 'SAMPLE_DEPTH', 'CELLCOUNT', 'SALINITY', 'WATER_TEMP', 'WIND_DIR', 'WIND_SPEED']
-    _datatypes = [np.float64, np.float64, None, np.float64, np.float64, np.float64, np.float64, np.float64, np.float64]
+    _columns = ['STATE_ID', 'DESCRIPTION', 'LATITUDE', 'LONGITUDE', 'SAMPLE_DATE', 'SAMPLE_DEPTH',
+                'GENUS', 'SPECIES', 'CATEGORY', 'CELLCOUNT', 'CELLCOUNT_UNIT', 'CELLCOUNT_QA',
+                'SALINITY', 'SALINITY_UNIT', 'SALINITY_QA', 'WATER_TEMP', 'WATER_TEMP_UNIT', 'WATER_TEMP_QA',
+                'WIND_DIR', 'WIND_DIR_UNIT', 'WIND_DIR_QA', 'WIND_SPEED', 'WIND_SPEED_UNIT', 'WIND_SPEED_QA']
+    _datatypes = [pd.StringDtype(), pd.StringDtype(), np.float64, np.float64, None, np.float64,
+                  pd.StringDtype(), pd.StringDtype(), pd.StringDtype(), np.float64, pd.StringDtype(), np.int64,
+                  np.float64, pd.StringDtype(), np.int64, np.float64, pd.StringDtype(), np.int64,
+                  np.float64, pd.StringDtype(), np.int64, np.float64, pd.StringDtype(), np.int64]
     _required_columns = ['LATITUDE', 'LONGITUDE', 'SAMPLE_DATE', 'CELLCOUNT']
-    _database_table_name = 'habsos_j'
-    _bounding_box = [30.7149, -97.66535, 24, -78.2789]
-
-    def __init__(self, logger: ETLLogger=None) -> None:
+ 
+    def __init__(self, database_table_name: str, logger: ETLLogger=None) -> None:
         self._df = None
         self._logger = logger
+        self._database_table_name = database_table_name
 
     def get_dataframe(self) -> pd.DataFrame:
         ''' Returns data as dataframe.'''
@@ -98,9 +105,9 @@ class HABDataETLHelper:
         # If requested, supplement missing rows from weather dataset
         if supplement_from_weather_data:
             self.merge_with_weather_data_from_api(start_date=start_date,
-                                         end_date=end_date,
-                                         date_delta=date_delta,
-                                         latlong_delta=latlong_delta)
+                                                  end_date=end_date,
+                                                  date_delta=date_delta,
+                                                  latlong_delta=latlong_delta)
 
         self.load_to_database(allow_nan_rows=allow_nan_rows)
 
@@ -163,8 +170,8 @@ class HABDataETLHelper:
 
         # Convert column data types
         for column_index in range(len(HABDataETLHelper._columns)):
-            # Skip None data types (i.e., do not convert)
             if HABDataETLHelper._datatypes[column_index] is not None:
+                # Skip None data types (i.e., do not convert)
                 transformed_data[HABDataETLHelper._columns[column_index]] = transformed_data[HABDataETLHelper._columns[column_index]].astype(HABDataETLHelper._datatypes[column_index])
 
         # Assign dataframe if successful (i.e., no exceptions thrown)
@@ -197,7 +204,7 @@ class HABDataETLHelper:
         # Insert rows
         for row_index in df_no_nan.index:
             # Convert from UNIX millisecond timestamp. Due to there being dates before 1970 in the data, this value can be negative.
-            query = f'INSERT INTO {HABDataETLHelper._database_table_name}({",".join(HABDataETLHelper._columns)}) VALUES ('
+            query = f'INSERT INTO {self._database_table_name}({",".join(HABDataETLHelper._columns)}) VALUES ('
 
             for column_index in range(len(HABDataETLHelper._columns)):
                 if column_index > 0:
@@ -205,8 +212,10 @@ class HABDataETLHelper:
 
                 if HABDataETLHelper._columns[column_index] == 'SAMPLE_DATE':
                     query += f'"{df_no_nan[HABDataETLHelper._columns[column_index]][row_index].strftime("%Y-%m-%d %H:%M:%S")}"'
-                elif np.isnan(df_no_nan[HABDataETLHelper._columns[column_index]][row_index]):
+                elif pd.isnull(df_no_nan[HABDataETLHelper._columns[column_index]][row_index]):
                     query += 'NULL'
+                elif HABDataETLHelper._datatypes[column_index] == pd.StringDtype():
+                    query += f'"{df_no_nan[HABDataETLHelper._columns[column_index]][row_index]}"'
                 else:
                     query += str(df_no_nan[HABDataETLHelper._columns[column_index]][row_index])
 
@@ -234,7 +243,7 @@ class HABDataETLHelper:
         db_cursor = db.cursor()
 
         # Query for all data
-        db_cursor.execute(f'SELECT {",".join(HABDataETLHelper._columns)} FROM {HABDataETLHelper._database_table_name}')
+        db_cursor.execute(f'SELECT {",".join(HABDataETLHelper._columns)} FROM {self._database_table_name}')
 
         data = {}
         for column in HABDataETLHelper._columns:
@@ -278,15 +287,15 @@ class HABDataETLHelper:
 
             iteration_log = self._GetLogger(f'Merging HAB and weather data from {iteration_start_date} to {iteration_end_date}')
 
-            # Get slice of rows with any NaN values within date interval
+            # Get slice of rows with any missing values within date interval
             df_slice = self._df.loc[self._df[(self._df['SAMPLE_DATE'] >= iteration_start_date) &
-                                             (self._df['SAMPLE_DATE'] <= iteration_end_date)].isna().any(axis=1).index]
+                                             (self._df['SAMPLE_DATE'] <= iteration_end_date)].isnull().any(axis=1).index]
 
             # Get columns with missing values
-            columns_with_nan = df_slice.keys()[df_slice.isna().any(axis=0)].to_list()
+            columns_with_null = df_slice.keys()[df_slice.isnull().any(axis=0)].to_list()
 
             # Only run if there are columns with missing data (also checks if there are data in this slice)
-            if len(columns_with_nan) > 0:
+            if len(columns_with_null) > 0:
                 # Determine bounding box in (latitude, longitude) coordinates from NW to SE
                 bounding_box = [max(df_slice['LATITUDE']), min(df_slice['LONGITUDE']), min(df_slice['LATITUDE']), max(df_slice['LONGITUDE'])]
 
@@ -298,8 +307,8 @@ class HABDataETLHelper:
                     try:
                         weather_data.run_et_from_api(start_date=iteration_start_date,
                                                     end_date=iteration_end_date,
-                                                    columns=columns_with_nan,
-                                                    datatypes=df_slice[columns_with_nan].dtypes.to_list(),
+                                                    columns=columns_with_null,
+                                                    datatypes=df_slice[columns_with_null].dtypes.to_list(),
                                                     bounding_box=bounding_box)
                         attempts_remaining = 0  # Clear to exit loop
                     except:
@@ -328,7 +337,7 @@ class HABDataETLHelper:
 
                         # For each column, get all rows without missing values
                         weather_data_columns_slices = {}
-                        for column in columns_with_nan:
+                        for column in columns_with_null:
                             weather_data_column_silce = weather_data_slice.dropna(subset=column)
 
                             # Only include columns with data
@@ -360,7 +369,7 @@ class HABDataETLHelper:
 
                             # Replace missing values from row found
                             for column in weather_data_columns_slices.keys():
-                                if np.isnan(self._df.loc[index, column]):
+                                if pd.isnull(self._df.loc[index, column]):
                                     self._df.loc[index, column] = weather_data_columns_slices[column].loc[best_match_index, column]
 
                     if merge_log is not None:
@@ -413,10 +422,23 @@ class WeatherDataETLHelper:
         self._logger = logger
 
     def get_dataframe(self) -> pd.DataFrame:
+        '''Returns internal dataframe.'''
         return self._df
 
     def run_et_from_api(self, start_date: datetime.datetime, end_date: datetime.datetime, columns: list[str],
                         datatypes: list[np.dtype], bounding_box: list[float]):
+        '''Run extraction and transformation using the NOAA API as the
+        data source and an internal dataframe as the data sink.
+
+        Parameters:
+        start_date: Start sample date for extraction, inclusive.
+        end_date: End sample date for extraction, inclusive.
+        columns: Names of columns to query from weather data.
+        datatypes: Datatypes of columns in same order as the "columns"
+        parameter.
+        bounding_box: Bounding box for query in order of
+        NW (lat, long), SE (lat, long).
+        '''
         self.transform_from_api(
             json_data=self.extract_from_api(start_date=start_date,
                                             end_date=end_date,
@@ -427,6 +449,15 @@ class WeatherDataETLHelper:
 
     def extract_from_api(self, start_date: datetime.datetime, end_date: datetime.datetime, columns: list[str],
                          bounding_box: list[float]):
+        '''Extracts weather data from NOAA API. Returns extracted JSON
+        data.
+        
+        Parameters:
+        start_date: Start sample date for extraction.
+        end_date: End sample date for extraction, inclusive.
+        columns: Names of columns to query from weather data.
+        bounding_box: Bounding box for query in order of
+        NW (lat, long), SE (lat, long).'''
         log = self._GetLogger('Extracting weather data from API')
 
         # Convert to string
@@ -452,6 +483,15 @@ class WeatherDataETLHelper:
             raise Exception(f'HTTP request failed. Status: {response.status}')
 
     def transform_from_api(self, json_data: dict, columns: list[str], datatypes: list[np.dtype]) -> None:
+        '''Transforms JSON data from NOAA API and stores it into
+        internal dataframe.
+        
+        Parameters:
+        json_data: JSON data extracted from NOAA API.
+        columns: Names of columns to transform.
+        datatypes: Datatypes of columns in same order as the "columns"
+        parameter.
+        '''
         log = self._GetLogger('Transforming weather data from API')
 
         # JSON dictionary accesses will throw an exception if JSON keys are not as expected. This is OK.
@@ -479,13 +519,13 @@ class WeatherDataETLHelper:
         transformed_data = pd.DataFrame(transformed_data)
 
         # Convert column data types
-        for column_index in range(len(WeatherDataETLHelper._columns)):
-            # Skip None data types (i.e., do not convert)
-            if WeatherDataETLHelper._datatypes[column_index] is not None:
-                transformed_data[WeatherDataETLHelper._columns[column_index]] = transformed_data[WeatherDataETLHelper._columns[column_index]].astype(WeatherDataETLHelper._datatypes[column_index])
+        all_columns = WeatherDataETLHelper._columns + columns
+        all_datatypes = WeatherDataETLHelper._datatypes + datatypes
 
-        for column_index in range(len(columns)):
-            transformed_data[columns[column_index]] = transformed_data[columns[column_index]].astype(datatypes[column_index])
+        for column_index in range(len(all_columns)):
+            # Skip None data types (i.e., do not convert)
+            if all_datatypes[column_index] is not None:
+                transformed_data[all_columns[column_index]] = transformed_data[all_columns[column_index]].astype(all_datatypes[column_index])
 
         # Assign dataframe if successful (i.e., no exceptions thrown). Convert data types first as they are all strings in JSON data.
         self._df = transformed_data
@@ -501,13 +541,16 @@ class WeatherDataETLHelper:
 
 
 class ETLManager:
-    def __init__(self, enable_logging: bool=False, log_file_dir: str=None):
-        self._enable_logging = enable_logging
-        self._log_file_dir = log_file_dir
+    def __init__(self, enable_logging: bool=False, log_file_dir: str=None, use_test_db: bool=False):
+        self._database_table_name = 'habsos_j_test' if use_test_db else 'habsos_j'
+        if enable_logging:
+            self._logger = ETLLogger(log_file_dir=log_file_dir)
+        else:
+            self._logger = None
 
     def run_etl(self, start_date: datetime.datetime=None, end_date: datetime.datetime=None,
                 supplement_from_weather_data: bool=True, date_delta: float=1.0, latlong_delta: float=0.1,
-                chunk_size_days: int=180, allow_nan_rows: bool=False):
+                chunk_size_days: int=180, allow_missing_rows: bool=False):
         '''
         Parameters:
         start_date: Start sample date for extraction, inclusive. If
@@ -525,22 +568,22 @@ class ETLManager:
         operation in. Default is 180.
         allow_nan_rows: Whether to allow rows with missing values to be
         loaded into the MySQL database. Default is False.'''
-        if self._enable_logging:
-            logger = ETLLogger(log_file_dir=self._log_file_dir)
-        else:
-            logger = None
-
         # If start date is not specified, then use latest timestamp
         # from database (exclusive)
         start_date_exclusive = False
 
         if start_date == None:
-            start_date = ETLManager._get_latest_sample_date_from_database()
+            start_date = ETLManager._get_latest_sample_date_from_database(self._database_table_name)
             start_date_exclusive = True
 
         # If end date is not specified, then use current time
         if end_date == None:
             end_date = datetime.datetime.now()
+
+        # TODO: Fix this bug. If database is empty, then start_date is
+        # always None unless set in argument. For now, set to 1953-01-01.
+        if start_date is None:
+            start_date = datetime.datetime(year=1953, month=1, day=1)
 
         chunk_start_date = start_date
         chunk_end_date = end_date
@@ -550,29 +593,55 @@ class ETLManager:
             if chunk_end_date - chunk_start_date > datetime.timedelta(days=chunk_size_days):
                 chunk_end_date = chunk_start_date + datetime.timedelta(days=chunk_size_days)
 
-            if logger is not None:
-                log = logger.get_log_token(f'Running ETL for {chunk_start_date.isoformat()} to {chunk_end_date.isoformat()}')
+            # Chunks after first must have exclusive start date to
+            # prevent duplicating data from end of previous chunk
+            if start_date != chunk_start_date:
+                start_date_exclusive = True
+
+            if self._logger is not None:
+                log = self._logger.get_log_token(f'Running ETL for {chunk_start_date.isoformat()} to {chunk_end_date.isoformat()}')
 
             # Run ETL in chunks to prevent system from running out of
             # memory for very large requests
-            hab_data = HABDataETLHelper(logger)
+            hab_data = HABDataETLHelper(database_table_name=self._database_table_name, logger=self._logger)
             hab_data.run_etl_from_api(start_date=chunk_start_date,
                                       end_date=chunk_end_date,
                                       start_date_exclusive=start_date_exclusive,
                                       supplement_from_weather_data=supplement_from_weather_data,
                                       date_delta=date_delta,
                                       latlong_delta=latlong_delta,
-                                      allow_nan_rows=allow_nan_rows)
+                                      allow_nan_rows=allow_missing_rows)
 
-            if logger is not None:
+            if self._logger is not None:
                 del log
 
             # Calculate next date interval starting from start of next month
             chunk_start_date = chunk_end_date
             chunk_end_date = end_date
 
-    def _get_latest_sample_date_from_database() -> datetime.datetime:
-        '''Returns most recent sample date in MySQL database.'''
+    def clear_database(self):
+        '''Deletes all rows from database table.'''
+        if self._logger is not None:
+            log = self._logger.get_log_token('Clearing database')
+
+        # Connect to database
+        db = MySQLdb.connect(host=DATABASES['default']['HOST'],
+                             port=int(DATABASES['default']['PORT']),
+                             database=DATABASES['default']['NAME'],
+                             user=DATABASES['default']['USER'],
+                             password=DATABASES['default']['PASSWORD'])
+        db_cursor = db.cursor()
+
+        # Delete every row in database
+        db_cursor.execute(f'DELETE FROM {self._database_table_name}')
+        db.commit()
+        db.close()
+
+    def _get_latest_sample_date_from_database(database_table_name: str) -> datetime.datetime:
+        '''Returns most recent sample date in MySQL database.
+
+        Parameters:
+        database_table_name: Name of MySQL database table.'''
         # Connect to database
         db = MySQLdb.connect(host=DATABASES['default']['HOST'],
                              port=int(DATABASES['default']['PORT']),
@@ -582,7 +651,33 @@ class ETLManager:
         db_cursor = db.cursor()
 
         # Query for latest timestamp
-        db_cursor.execute(f'SELECT SAMPLE_DATE FROM {HABDataETLHelper._database_table_name} ORDER BY SAMPLE_DATE DESC LIMIT 1')
+        db_cursor.execute(f'SELECT SAMPLE_DATE FROM {database_table_name} ORDER BY SAMPLE_DATE DESC LIMIT 1')
+
+        sample_date = None
+
+        row = db_cursor.fetchone()
+        if row is not None:
+            sample_date = row[0]
+
+        db.close()
+
+        return sample_date
+
+    def _get_earliest_sample_date_from_database(database_table_name: str) -> datetime.datetime:
+        '''Returns the oldest sample date in MySQL database.
+
+        Parameters:
+        database_table_name: Name of MySQL database table.'''
+        # Connect to database
+        db = MySQLdb.connect(host=DATABASES['default']['HOST'],
+                             port=int(DATABASES['default']['PORT']),
+                             database=DATABASES['default']['NAME'],
+                             user=DATABASES['default']['USER'],
+                             password=DATABASES['default']['PASSWORD'])
+        db_cursor = db.cursor()
+
+        # Query for oldest timestamp
+        db_cursor.execute(f'SELECT SAMPLE_DATE FROM {database_table_name} ORDER BY SAMPLE_DATE ASC LIMIT 1')
 
         sample_date = None
 
@@ -597,10 +692,37 @@ class ETLManager:
 
 # If running this file, then perform the automation ETL routine
 if __name__ == '__main__':
+    # Get arguments
+    clear_database = '-cleardb' in sys.argv
+    use_test_db = '-testdb' in sys.argv
+    use_date_range = '-daterange' in sys.argv
+
+    start_date = None
+    end_date = None
+
+    # If using date range, the following two arguments must be dates
+    # in ISO format in order of start date, end_date.
+    if use_date_range:
+        for arg_index in range(len(sys.argv)):
+            if sys.argv[arg_index] == '-daterange':
+                use_test_db = True
+                if arg_index < len(sys.argv) - 2:
+                    start_date = datetime.datetime.fromisoformat(sys.argv[arg_index + 1])
+                    end_date = datetime.datetime.fromisoformat(sys.argv[arg_index + 2])
+                break
+
     # TODO: Determine a proper log file directory
-    mgr = ETLManager(enable_logging=True, log_file_dir='.')
-    mgr.run_etl(supplement_from_weather_data=True,
+    mgr = ETLManager(enable_logging=True, log_file_dir='.', use_test_db=use_test_db)
+
+    # Delete data in database, if requested
+    if clear_database:
+        mgr.clear_database()
+
+    # Run routine ETL procedure
+    mgr.run_etl(start_date=start_date,
+                end_date=end_date,
+                supplement_from_weather_data=True,
                 date_delta=datetime.timedelta(days=1.0),
-                latlong_delta=0.2,
+                latlong_delta=0.08,
                 chunk_size_days=180,
-                allow_nan_rows=False)
+                allow_missing_rows=True)
