@@ -22,7 +22,7 @@ if __name__ == "__main__":
     db = Database()
     query = """
         select * 
-        FROM habsos_t
+        FROM habsos_j
         WHERE LATITUDE IS NOT NULL and LONGITUDE IS NOT NULL
         AND SAMPLE_DATE  IS NOT NULL
         and CATEGORY  is not NULL
@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     df = pd.DataFrame(records, columns=columns)
 
-    df['date'] = pd.to_datetime(df['SAMPLE_DATETIME'])
+    df['date'] = df['SAMPLE_DATE'] #because joan convert to datetime object
     df['month'] = df['date'].dt.month
 
     le = LabelEncoder()
@@ -79,14 +79,8 @@ if __name__ == "__main__":
     X_test_scaled[features_to_scale] = scaler.transform(X_test[features_to_scale])
 
     model = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
-
-
     model.fit(X_train_scaled, y_train)
     y_pred = model.predict(X_test_scaled)
-
-    # Print accuracy and classification report using original labels
     print("Accuracy:", accuracy_score(y_test, y_pred))
-    print(classification_report(y_test, y_pred, target_names=le.classes_))
-
-
+    print(classification_report(y_test, y_pred))
 
