@@ -57,16 +57,18 @@ class _LogToken:
 
 
 class HABDataETLHelper:
-    _columns = ['STATE_ID', 'DESCRIPTION', 'LATITUDE', 'LONGITUDE', 'SAMPLE_DATE', 'SAMPLE_DEPTH',
+    # Custom datatypes as enum
+    _datatype_datetime_ms = 0
+    _api_columns = ['STATE_ID', 'DESCRIPTION', 'LATITUDE', 'LONGITUDE', 'SAMPLE_DATE', 'SAMPLE_DEPTH',
                 'GENUS', 'SPECIES', 'CATEGORY', 'CELLCOUNT', 'CELLCOUNT_UNIT', 'CELLCOUNT_QA',
                 'SALINITY', 'SALINITY_UNIT', 'SALINITY_QA', 'WATER_TEMP', 'WATER_TEMP_UNIT', 'WATER_TEMP_QA',
                 'WIND_DIR', 'WIND_DIR_UNIT', 'WIND_DIR_QA', 'WIND_SPEED', 'WIND_SPEED_UNIT', 'WIND_SPEED_QA']
-    _datatypes = [pd.StringDtype(), pd.StringDtype(), np.float64, np.float64, None, np.float64,
+    _api_datatypes = [pd.StringDtype(), pd.StringDtype(), np.float64, np.float64, None, np.float64,
                   pd.StringDtype(), pd.StringDtype(), pd.StringDtype(), np.float64, pd.StringDtype(), np.int64,
                   np.float64, pd.StringDtype(), np.int64, np.float64, pd.StringDtype(), np.int64,
                   np.float64, pd.StringDtype(), np.int64, np.float64, pd.StringDtype(), np.int64]
     _required_columns = ['LATITUDE', 'LONGITUDE', 'SAMPLE_DATE', 'CELLCOUNT']
- 
+
     def __init__(self, database_table_name: str, logger: ETLLogger=None) -> None:
         self._df = None
         self._logger = logger
@@ -137,7 +139,7 @@ class HABDataETLHelper:
                                    timeout=300.0,  # Allow 5 minutes due to large data volume
                                    fields={ 'f': 'json',
                                             'where': where,
-                                            'outFields': ','.join(HABDataETLHelper._columns),
+                                            'outFields': ','.join(HABDataETLHelper._api_columns),
                                             'returnGeometry': 'false' })
 
         if response.status == 200:
@@ -169,10 +171,10 @@ class HABDataETLHelper:
         transformed_data = pd.DataFrame(transformed_data)
 
         # Convert column data types
-        for column_index in range(len(HABDataETLHelper._columns)):
-            if HABDataETLHelper._datatypes[column_index] is not None:
+        for column_index in range(len(HABDataETLHelper._api_columns)):
+            if HABDataETLHelper._api_datatypes[column_index] is not None:
                 # Skip None data types (i.e., do not convert)
-                transformed_data[HABDataETLHelper._columns[column_index]] = transformed_data[HABDataETLHelper._columns[column_index]].astype(HABDataETLHelper._datatypes[column_index])
+                transformed_data[HABDataETLHelper._api_columns[column_index]] = transformed_data[HABDataETLHelper._api_columns[column_index]].astype(HABDataETLHelper._api_datatypes[column_index])
 
         # Assign dataframe if successful (i.e., no exceptions thrown)
         self._df = transformed_data
@@ -184,6 +186,10 @@ class HABDataETLHelper:
         allow_nan_rows: Whether to allow rows with missing values to be
         loaded into the MySQL database.'''
         log = self._GetLogger('Loading HAB data to database')
+
+        # Database uses VARCHAR for SAMPLE_DATE column and DATETIME for
+        # SAMPLE_DATETIME column to represent the same date
+        extra_columns = ['SAMPLE_DATETIME']
 
         # Connect to database
         db = MySQLdb.connect(host=DATABASES['default']['HOST'],
@@ -204,20 +210,25 @@ class HABDataETLHelper:
         # Insert rows
         for row_index in df_no_nan.index:
             # Convert from UNIX millisecond timestamp. Due to there being dates before 1970 in the data, this value can be negative.
-            query = f'INSERT INTO {self._database_table_name}({",".join(HABDataETLHelper._columns)}) VALUES ('
+            query = f'INSERT INTO {self._database_table_name}({",".join(HABDataETLHelper._api_columns + extra_columns)}) VALUES ('
 
-            for column_index in range(len(HABDataETLHelper._columns)):
+            for column_index in range(len(HABDataETLHelper._api_columns)):
                 if column_index > 0:
                     query += ','
 
-                if HABDataETLHelper._columns[column_index] == 'SAMPLE_DATE':
-                    query += f'"{df_no_nan[HABDataETLHelper._columns[column_index]][row_index].strftime("%Y-%m-%d %H:%M:%S")}"'
-                elif pd.isnull(df_no_nan[HABDataETLHelper._columns[column_index]][row_index]):
+                if HABDataETLHelper._api_columns[column_index] == 'SAMPLE_DATE':
+                    # Maintain this date format, as required by front end
+                    query += f'"{df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index].strftime("%m/%d/%Y %H:%M")}"'
+                elif pd.isnull(df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index]):
                     query += 'NULL'
-                elif HABDataETLHelper._datatypes[column_index] == pd.StringDtype():
-                    query += f'"{df_no_nan[HABDataETLHelper._columns[column_index]][row_index]}"'
+                elif HABDataETLHelper._api_datatypes[column_index] == pd.StringDtype():
+                    query += f'"{df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index]}"'
                 else:
-                    query += str(df_no_nan[HABDataETLHelper._columns[column_index]][row_index])
+                    query += str(df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index])
+
+            for column_index in range(len(extra_columns)):
+                if extra_columns[column_index] == 'SAMPLE_DATETIME':
+                    query += f',"{df_no_nan["SAMPLE_DATE"][row_index].strftime("%Y-%m-%d %H:%M:%S")}"'
 
             query += ')'
 
@@ -242,21 +253,34 @@ class HABDataETLHelper:
                              password=DATABASES['default']['PASSWORD'])
         db_cursor = db.cursor()
 
+        # Request datetime sample date column from database for proper conversion
+        database_columns = HABDataETLHelper._api_columns.copy()
+
+        for column_index in range(len(database_columns)):
+            if database_columns[column_index] == 'SAMPLE_DATE':
+                database_columns[column_index] = 'SAMPLE_DATETIME'
+
         # Query for all data
-        db_cursor.execute(f'SELECT {",".join(HABDataETLHelper._columns)} FROM {self._database_table_name}')
+        db_cursor.execute(f'SELECT {",".join(HABDataETLHelper._api_columns)} FROM {self._database_table_name}')
 
         data = {}
-        for column in HABDataETLHelper._columns:
+        for column in HABDataETLHelper._api_columns:
             data[column] = []
 
         row = db_cursor.fetchone()
         while row:
-            for column_index in range(len(HABDataETLHelper._columns)):
-                data[HABDataETLHelper._columns[column_index]].append(row[column_index])
-                data[HABDataETLHelper._columns[column_index]].astype(HABDataETLHelper._datatypes[column_index])
+            for column_index in range(len(HABDataETLHelper._api_columns)):
+                data[HABDataETLHelper._api_columns[column_index]].append(row[column_index])
 
             # Get next row
             row = db_cursor.fetchone()
+
+        data = pd.DataFrame(data)
+
+        # Convert datatypes
+        for column_index in range(len(HABDataETLHelper._api_columns)):
+            if HABDataETLHelper._api_datatypes[column_index] is not None:
+                data[HABDataETLHelper._api_columns[column_index]].astype(HABDataETLHelper._api_datatypes[column_index])
 
         self._df = data
 
@@ -392,12 +416,11 @@ class HABDataETLHelper:
         allow_nan_rows: Weather to include rows in missing values.'''
         # Load data from files
         self._df = pd.read_csv(filepath_or_buffer=csv_file_path,
-                              usecols=HABDataETLHelper._columns,
-                              parse_dates=['SAMPLE_DATE'])
+                              usecols=HABDataETLHelper._api_columns)
 
         # Convert data types
-        for column_index in range(len(HABDataETLHelper._columns)):
-            self._df[HABDataETLHelper._columns[column_index]] = self._df[HABDataETLHelper._columns[column_index]].astype(HABDataETLHelper._datatypes[column_index])
+        for column_index in range(len(HABDataETLHelper._api_columns)):
+            self._df[HABDataETLHelper._api_columns[column_index]] = self._df[HABDataETLHelper._api_columns[column_index]].astype(HABDataETLHelper._api_datatypes[column_index])
 
         # Drop rows with missing data, if requested
         if not allow_nan_rows:
@@ -405,7 +428,7 @@ class HABDataETLHelper:
 
     def save_to_csv(self, csv_file_name: str) -> None:
         '''Saves internal dataframe to a CSV file.'''
-        self._df.to_csv(csv_file_name)
+        self._df.to_csv(csv_file_name, index=False, na_rep='NULL')
 
     def _GetLogger(self, message: str):
         if self._logger is not None:
@@ -651,7 +674,7 @@ class ETLManager:
         db_cursor = db.cursor()
 
         # Query for latest timestamp
-        db_cursor.execute(f'SELECT SAMPLE_DATE FROM {database_table_name} ORDER BY SAMPLE_DATE DESC LIMIT 1')
+        db_cursor.execute(f'SELECT SAMPLE_DATETIME FROM {database_table_name} ORDER BY SAMPLE_DATETIME DESC LIMIT 1')
 
         sample_date = None
 
@@ -677,7 +700,7 @@ class ETLManager:
         db_cursor = db.cursor()
 
         # Query for oldest timestamp
-        db_cursor.execute(f'SELECT SAMPLE_DATE FROM {database_table_name} ORDER BY SAMPLE_DATE ASC LIMIT 1')
+        db_cursor.execute(f'SELECT SAMPLE_DATETIME FROM {database_table_name} ORDER BY SAMPLE_DATETIME ASC LIMIT 1')
 
         sample_date = None
 
@@ -723,6 +746,6 @@ if __name__ == '__main__':
                 end_date=end_date,
                 supplement_from_weather_data=True,
                 date_delta=datetime.timedelta(days=1.0),
-                latlong_delta=0.08,
+                latlong_delta=0.2,
                 chunk_size_days=180,
                 allow_missing_rows=True)
