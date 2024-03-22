@@ -31,38 +31,33 @@ if __name__ == "__main__":
         and WIND_DIR is not null 
         and WIND_SPEED is not null;
     """
-
-
     records, columns = db.execute_query(query)
     db.close()
-
     df = pd.DataFrame(records, columns=columns)
-
-    df['date'] = df['SAMPLE_DATE'] #because joan convert to datetime object
+    df['date'] = pd.to_datetime(df['SAMPLE_DATETIME'])
     df['month'] = df['date'].dt.month
-
     le = LabelEncoder()
     df['category_encoded'] = le.fit_transform(df['CATEGORY'])
 
 
-    features = ['LATITUDE', 'LONGITUDE', 'SALINITY', 'WATER_TEMP', 'WIND_DIR', 'WIND_SPEED', 'month']
+
+
+
+    
+
+    features = ['LATITUDE', 'LONGITUDE', 'SALINITY', 'WATER_TEMP', 'WIND_DIR', 'WIND_SPEED']
     '''
       example data:
       SALINITY: 32.00
       WATER_TEMP: 28
       WIN_DIR: 135
       WIND_SPEED: 5
-      month: 12 
     '''
 
 
     X = df[features]
     y = df['category_encoded']
 
-    # Transform 'month' to cyclical features
-    X['month_sin'] = np.sin(2 * np.pi * X['month'] / 12)
-    X['month_cos'] = np.cos(2 * np.pi * X['month'] / 12)
-    features_updated = ['LATITUDE', 'LONGITUDE', 'SALINITY', 'WATER_TEMP', 'WIND_DIR', 'WIND_SPEED', 'month_sin', 'month_cos']
 
 
     features_to_scale = ['SALINITY', 'WATER_TEMP', 'WIND_DIR', 'WIND_SPEED']
@@ -70,7 +65,7 @@ if __name__ == "__main__":
 
 
 
-    X_train, X_test, y_train, y_test = train_test_split(X[features_updated], y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X[features], y, test_size=0.2, random_state=42)
 
     scaler = StandardScaler()
     X_train_scaled = X_train.copy()
@@ -78,9 +73,17 @@ if __name__ == "__main__":
     X_train_scaled[features_to_scale] = scaler.fit_transform(X_train[features_to_scale])
     X_test_scaled[features_to_scale] = scaler.transform(X_test[features_to_scale])
 
-    model = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
+    # model = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
+    model = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=8000, class_weight='balanced') #this seem good
+    
+
+
     model.fit(X_train_scaled, y_train)
     y_pred = model.predict(X_test_scaled)
+
+    # Print accuracy and classification report using original labels
     print("Accuracy:", accuracy_score(y_test, y_pred))
-    print(classification_report(y_test, y_pred))
+    print(classification_report(y_test, y_pred, target_names=le.classes_))
+
+
 
