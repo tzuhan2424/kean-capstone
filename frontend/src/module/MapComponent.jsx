@@ -10,6 +10,8 @@ import Color from '@arcgis/core/Color';
 
 import mapConfig from './config/mapConfig';
 import './css/map.css';
+import {drawBoundingBoxes} from "./helper/bbox";
+import bbox from "./helper/bbox.json";
 
 const MapComponent = ({ points }) => {
   const [mapView, setMapView] = useState(null);
@@ -43,13 +45,16 @@ const MapComponent = ({ points }) => {
 
   useEffect(() => {
     if (!mapView || !points) return;
-
     const graphicsLayer = mapView.map.findLayerById('graphicsLayer') || new GraphicsLayer({ id: 'graphicsLayer' });
     if (!mapView.map.findLayerById('graphicsLayer')) {
       mapView.map.add(graphicsLayer);
     }
 
     graphicsLayer.removeAll();
+
+
+    drawBoundingBoxes(graphicsLayer, bbox);
+
 
     points.forEach(point => {
       const { longitude, latitude, category, ...otherAttributes } = point;
