@@ -6,6 +6,8 @@ import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate, passDateCheck, passDateRangeCheck } from './helper/MainAppHelper';
+import areas from './helper/bbox.json'; // Import the JSON file
+
 
 const MainApp = () => {
   const [results, setResults] = useState([]);
@@ -14,17 +16,27 @@ const MainApp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [recordCount, setRecordCount] = useState(0);
 
+  const [selectedArea, setSelectedArea] = useState(null);
+  const handleAreaChange = (event) => {
+    const areaName = event.target.value;
+    const area = areas.find(a => a.name === areaName);
+    setSelectedArea(area);
+  };
+
+
+  console.log(selectedArea);
+
   const [dates, setDates] = useState({
     startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     endDate: new Date(),
   });
   const [hasFetchedInitialData, setHasFetchedInitialData] = useState(false);
 
-  console.log('dates',dates)
-  console.log('formattedDate', formattedDate)
+  // console.log('dates',dates)
+  // console.log('formattedDate', formattedDate)
 
 
-  
+
   useEffect(() => {
     const formattedFromDate = dates.startDate ? formatDate(dates.startDate) : '';
     const formattedToDate = dates.endDate ? formatDate(dates.endDate) : '';
@@ -77,7 +89,9 @@ const MainApp = () => {
         <NavBar 
           onDateChange={handleDateChange} 
           onSubmit={handleSubmit}
-          dates={dates}/>
+          dates={dates}
+          areas={areas}
+          onAreaChange={handleAreaChange}/>
 
         <div id ='fetch-loading-box'> 
           {isLoading ? (
@@ -87,7 +101,7 @@ const MainApp = () => {
           )} 
         </div> 
 
-        <MapComponent points={results}/>
+        <MapComponent points={results} area={selectedArea}/>
     </div>
   )
 }

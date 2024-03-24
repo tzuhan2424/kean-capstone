@@ -6,6 +6,7 @@ import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import {a11yProps, CustomTabPanel} from "./helper/NavarHelper";
 import SearchTab from './component/SearchTab';
+import PredictTab from "./component/PredictTab";
 CustomTabPanel.propTypes = {
   children: PropTypes.node,
   index: PropTypes.number.isRequired,
@@ -15,7 +16,7 @@ CustomTabPanel.propTypes = {
 
 
 
-const NavBar = ({ onDateChange, onSubmit, dates}) => {
+const NavBar = ({ onDateChange, onSubmit, dates, areas, onAreaChange}) => {
   const [value, setValue] = React.useState(0);
   const handleChange = (event, newValue) => {
     setValue(newValue);
@@ -38,10 +39,9 @@ const NavBar = ({ onDateChange, onSubmit, dates}) => {
             />
           </CustomTabPanel>
           <CustomTabPanel value={value} index={1}>
-            <SearchTab 
-              onDateChange={onDateChange}
-              onSubmit = {onSubmit}
-              dates = {dates}
+            <PredictTab
+              areas={areas}
+              onAreaChange={onAreaChange}
             />
           </CustomTabPanel>
         </Box>

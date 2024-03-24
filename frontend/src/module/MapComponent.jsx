@@ -13,8 +13,9 @@ import './css/map.css';
 import {drawBoundingBoxes} from "./helper/bbox";
 import bbox from "./helper/bbox.json";
 
-const MapComponent = ({ points }) => {
+const MapComponent = ({ points, area }) => {
   const [mapView, setMapView] = useState(null);
+
 
   useEffect(() => {
     esriConfig.apiKey = process.env.REACT_APP_ARCGIS_API_KEY;
@@ -53,8 +54,11 @@ const MapComponent = ({ points }) => {
     graphicsLayer.removeAll();
 
 
-    drawBoundingBoxes(graphicsLayer, bbox);
-
+    // drawBoundingBoxes(graphicsLayer, bbox);
+    console.log(area)
+    if (area) {
+      drawBoundingBoxes(graphicsLayer, [{ coordinates: area.coordinates }]);
+    }
 
     points.forEach(point => {
       const { longitude, latitude, category, ...otherAttributes } = point;
@@ -170,7 +174,7 @@ const MapComponent = ({ points }) => {
       graphicsLayer.add(pointGraphic);
     });
 
-  }, [points, mapView]);
+  }, [points, mapView, area]);
 
   return (
     <div id="map-app-content">
