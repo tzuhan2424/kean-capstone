@@ -38,7 +38,11 @@ const NavBar = ({ onDateChange, onSubmit, dates}) => {
             />
           </CustomTabPanel>
           <CustomTabPanel value={value} index={1}>
-            Item Two
+            <SearchTab 
+              onDateChange={onDateChange}
+              onSubmit = {onSubmit}
+              dates = {dates}
+            />
           </CustomTabPanel>
         </Box>
     </div>

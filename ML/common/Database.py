@@ -31,6 +31,10 @@ class Database:
         records = self.cursor.fetchall()
         columns = [desc[0] for desc in self.cursor.description]
         return records, columns
+    
+    def execute_mockupdata_query(self, query, params=None):
+        self.cursor.execute(query, params)
+        self.conn.commit()
 
     def close(self):
         """Closes the cursor and connection."""

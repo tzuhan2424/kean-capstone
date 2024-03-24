@@ -9,7 +9,6 @@ import { formatDate, passDateCheck, passDateRangeCheck } from './helper/MainAppH
 
 const MainApp = () => {
   const [results, setResults] = useState([]);
-  // const [dates, setDates] = useState({ startDate: null, endDate: null });
   const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +20,11 @@ const MainApp = () => {
   });
   const [hasFetchedInitialData, setHasFetchedInitialData] = useState(false);
 
+  console.log('dates',dates)
+  console.log('formattedDate', formattedDate)
+
+
+  
   useEffect(() => {
     const formattedFromDate = dates.startDate ? formatDate(dates.startDate) : '';
     const formattedToDate = dates.endDate ? formatDate(dates.endDate) : '';
@@ -64,7 +68,6 @@ const MainApp = () => {
     FetchData(formattedDate.fromDate, formattedDate.toDate);
   };
 
-  // console.log(results);
   
   
 
