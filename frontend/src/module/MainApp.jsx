@@ -75,7 +75,11 @@ const MainApp = () => {
     }
   }, [formattedDate, hasFetchedInitialData]);
 
+
+  const [isPredict, setIsPredict] = useState(false);
   const handleSubmit = () => {
+    setIsPredict(false);
+    setSelectedArea(null);
     FetchData(formattedDate.fromDate, formattedDate.toDate);
   };
 
@@ -90,13 +94,10 @@ const MainApp = () => {
               setResults(response.data.points);
               setRecordCount(response.data.points.length); // Update record count based on response
               setIsLoading(false); // Stop loading
-
-
           })
           .catch(error => {
               console.error('Error making prediction:', error);
               setIsLoading(false); // Stop loading in case of error
-
           });
     }
     else{
@@ -107,29 +108,8 @@ const MainApp = () => {
 
 
 
-
-  const fetchDataWithRegion =(selectedArea)=>{
-    setIsLoading(true); // Start loading
-    console.log(selectedArea);
-
-    if (selectedArea){
-      axios.post('http://localhost:8000/api/searchPredictHabsosbySelectedArea', selectedArea)
-      .then(response => {
-        setResults(response.data);
-        setRecordCount(response.data.length); // Update record count based on response
-        setIsLoading(false); // Stop loading
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        setIsLoading(false); // Stop loading in case of error
-      });
-    }else{
-      console.log('region invalid');
-    }
-  }
-
   const handlePredict = () =>{
-    // fetchDataWithRegion(selectedArea);
+    setIsPredict(true);
     PredictBasedOnArea(selectedArea);
   };
 
@@ -144,7 +124,8 @@ const MainApp = () => {
           dates={dates}
           areas={areas}
           onAreaChange={handleAreaChange}
-          onPredict={handlePredict}/>
+          onPredict={handlePredict}
+          />
 
         <div id ='fetch-loading-box'> 
           {isLoading ? (
@@ -154,7 +135,10 @@ const MainApp = () => {
           )} 
         </div> 
 
-        <MapComponent points={results} area={selectedArea}/>
+        <MapComponent 
+          points={results} 
+          area={selectedArea} 
+          isPredict={isPredict}/>
     </div>
   )
 }
