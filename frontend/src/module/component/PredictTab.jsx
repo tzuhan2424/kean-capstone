@@ -1,6 +1,6 @@
 import React from 'react'
 
-const PredictTab = ({areas, onAreaChange }) => {
+const PredictTab = ({areas, onAreaChange, onPredict}) => {
   return (  
     <div>
         {areas.map(area => (
@@ -16,7 +16,7 @@ const PredictTab = ({areas, onAreaChange }) => {
             </div>
         ))}
 
-        <button>Predict</button>
+        <button onClick={onPredict}>Predict</button>
 
     </div>
   )

@@ -24,7 +24,6 @@ const MainApp = () => {
   };
 
 
-  console.log(selectedArea);
 
   const [dates, setDates] = useState({
     startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)),
@@ -46,8 +45,6 @@ const MainApp = () => {
   const handleDateChange = (newDate) => {
     setDates(prevDates => ({ ...prevDates, ...newDate }));
   };
-
-
   const FetchData = (fromDate, toDate) => {
     setIsLoading(true); // Start loading
     const genus = 'Karenia';
@@ -80,7 +77,29 @@ const MainApp = () => {
     FetchData(formattedDate.fromDate, formattedDate.toDate);
   };
 
-  
+  const PredictBasedOnArea = (selectedArea)=>{
+    if (selectedArea) {
+      console.log('selected region', selectedArea.name);
+      const url = 'http://localhost:8000/api/fetchPredictResult'; // Change to your actual API URL
+
+      axios.post(url, selectedArea)
+          .then(response => {
+              console.log('Prediction response:', response.data);
+          })
+          .catch(error => {
+              console.error('Error making prediction:', error);
+          });
+    }
+    else{
+      console.log('you dont select region');
+    }
+  };
+
+
+  const handlePredict = () =>{
+    PredictBasedOnArea(selectedArea);
+  };
+
   
 
 
@@ -91,7 +110,8 @@ const MainApp = () => {
           onSubmit={handleSubmit}
           dates={dates}
           areas={areas}
-          onAreaChange={handleAreaChange}/>
+          onAreaChange={handleAreaChange}
+          onPredict={handlePredict}/>
 
         <div id ='fetch-loading-box'> 
           {isLoading ? (
