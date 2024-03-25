@@ -55,7 +55,7 @@ const MapComponent = ({ points, area }) => {
 
 
     // drawBoundingBoxes(graphicsLayer, bbox);
-    console.log(area)
+    // console.log(area)
     if (area) {
       drawBoundingBoxes(graphicsLayer, [{ coordinates: area.coordinates }]);
     }

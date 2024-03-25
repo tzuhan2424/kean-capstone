@@ -56,6 +56,8 @@ const MainApp = () => {
       toDate,
     })
     .then(response => {
+      // console.log('fetch');
+      // console.log(response.data);
       setResults(response.data);
       setRecordCount(response.data.length); // Update record count based on response
       setIsLoading(false); // Stop loading
@@ -79,15 +81,22 @@ const MainApp = () => {
 
   const PredictBasedOnArea = (selectedArea)=>{
     if (selectedArea) {
-      console.log('selected region', selectedArea.name);
+      // console.log('selected region', selectedArea.name);
       const url = 'http://localhost:8000/api/fetchPredictResult'; // Change to your actual API URL
 
       axios.post(url, selectedArea)
           .then(response => {
-              console.log('Prediction response:', response.data);
+              // console.log('Prediction response:', response.data);
+              setResults(response.data.points);
+              setRecordCount(response.data.points.length); // Update record count based on response
+              setIsLoading(false); // Stop loading
+
+
           })
           .catch(error => {
               console.error('Error making prediction:', error);
+              setIsLoading(false); // Stop loading in case of error
+
           });
     }
     else{
@@ -96,7 +105,31 @@ const MainApp = () => {
   };
 
 
+
+
+
+  const fetchDataWithRegion =(selectedArea)=>{
+    setIsLoading(true); // Start loading
+    console.log(selectedArea);
+
+    if (selectedArea){
+      axios.post('http://localhost:8000/api/searchPredictHabsosbySelectedArea', selectedArea)
+      .then(response => {
+        setResults(response.data);
+        setRecordCount(response.data.length); // Update record count based on response
+        setIsLoading(false); // Stop loading
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        setIsLoading(false); // Stop loading in case of error
+      });
+    }else{
+      console.log('region invalid');
+    }
+  }
+
   const handlePredict = () =>{
+    // fetchDataWithRegion(selectedArea);
     PredictBasedOnArea(selectedArea);
   };
 

@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from ..models import Test, Sport, HabsosT,HabsosJ, HabsosPrediction
-from ..serializer.serializers import TestSerializer,SportSerializer, HabsosTSerializer,HabsosJSerializer
+from ..serializer.serializers import HabsosTSerializer,HabsosJSerializer, HabsosPredictionSerializer
 from rest_framework.views import APIView
 from django.db import connection
 from rest_framework.response import Response
@@ -21,21 +21,6 @@ def test(request):
         'message': 'test'
     }
     return JsonResponse(test_data)
-
-class testList(APIView):
-    def get(self, request):
-        Tests = Test.objects.all()
-        print(Tests.query)  # Print the query to debug it
-        Tests._fetch_all()  # Force evaluation of the QuerySet
-        print(connection.queries)  # Print executed queries
-        return Response('d')
-    
-class sportList(APIView):
-    def get(self, request):
-        sports = Sport.objects.all().values('name')  # specify the fields you need
-        sports_list = list(sports)  # convert QuerySet to a list of dictionaries
-        return JsonResponse(sports_list, safe=False)
-    
 
 class searchHabsosDb(APIView):
     def post(self, request):
@@ -136,9 +121,12 @@ class PredictResult(APIView):
             )
             # print(str(observations.query))
             result = self.generatePredict(observations)
+            serializer = HabsosPredictionSerializer(observations, many=True)
+
             prediction_result = {
                 "status": "success",
                 "area": area_name,
+                "points": serializer.data,
                 "result": result 
             }
         else:
@@ -147,4 +135,3 @@ class PredictResult(APIView):
         
         return JsonResponse(prediction_result)
 
-    
