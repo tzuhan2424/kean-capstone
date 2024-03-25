@@ -5,6 +5,7 @@ import datetime
 import MySQLdb
 import time
 import sys
+import pydap.client as pydapclient
 from settings import DATABASES
 
 
@@ -79,8 +80,8 @@ class HABDataETLHelper:
         return self._df
 
     def run_etl_from_api(self, start_date: datetime.datetime, end_date: datetime.datetime, start_date_exclusive: bool=False,
-                         supplement_from_weather_data: bool=True, date_delta: float=1.0, latlong_delta: float=0.1,
-                         allow_nan_rows: bool=False) -> None:
+                         supplement_from_weather_data: bool=True, date_delta: datetime.timedelta=datetime.timedelta(days=1.0),
+                         latlong_delta: float=0.1, allow_nan_rows: bool=False) -> None:
         ''' Run extraction, transformation, and loading using the NOAA
         API as the data source and the TideTrack database as the data
         sink.
@@ -94,7 +95,7 @@ class HABDataETLHelper:
         supplement_from_weather_data: Whether to supplement missing
         data from different weather datasets. Default is True.
         date_delta: Maximum difference between HAB and weather data
-        sample dates in days for merging. Default is 1.
+        sample dates for merging. Default is 1 day.
         latlong_delta: Maximum difference between HAB and weather
         data latitude and longitude for merging. Default is 0.1.
         allow_nan_rows: Whether to allow rows with missing values to be
@@ -292,7 +293,7 @@ class HABDataETLHelper:
         start_date: Start sample date for extraction, inclusive.
         end_date: End sample date for extraction, inclusive.
         date_delta: Maximum difference between HAB and weather data
-        sample dates in days for merging.
+        sample dates for merging.
         latlong_delta: Maximum difference between HAB and weather
         data latitude and longitude for merging.'''
         log = self._GetLogger('Merging HAB and weather data')
@@ -563,18 +564,216 @@ class WeatherDataETLHelper:
         return None
 
 
+class WeatherForecastDataETLHelper:
+    def __init__(self, database_table_name: str, logger: ETLLogger=None):
+        self._df = None
+        self._database_table_name = database_table_name
+        self._logger = logger
+
+    def get_dataframe(self) -> pd.DataFrame:
+        '''Returns internal dataframe.'''
+        return self._df
+
+    def run_etl_from_api(self, date: datetime.datetime, latitudes: list[float],
+                         longitudes: list[float], latlong_delta: float,
+                         min_date_resolution: datetime.timedelta) -> None:
+        self.transform_from_api(
+            dataset_proxy=self.extract_from_api(date=date),
+            latitudes=latitudes,
+            longitudes=longitudes,
+            latlong_delta=latlong_delta,
+            min_date_resolution=min_date_resolution)
+        self.load_to_database()
+
+    def extract_from_api(self, date: datetime.datetime):
+        '''Extracts weather data from NOAA NGOFS2 forecast dataset API.
+        Returns DAP2 dataset proxy.
+        
+        Parameters:
+        date: Nearest date to extract forecasted data from.'''
+        # Extract NOAA NGOFS2 forecast dataset from THREDDS server
+        # using DAP2 protocol. DAP endpoint URL format is the
+        # following:
+        # <base_url>/<year>/<month>/<day>/<base_filename>.<year><month><day>.t<cycle>z.nc
+        #
+        # The forecast is performed every 6 hours each day, each
+        # being 2-days long. Cycles are labeled as 3, 9, 15, or 21. It
+        # is assumed that each is at the center of a 6-hour interval.
+        #
+        # Example URL: https://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/NGOFS2/MODELS/2024/03/23/nos.ngofs2.stations.forecast.20240323.t15z.nc
+        log = self._GetLogger('Extracting weather forecast data from API')
+
+        # Calculate cycle
+        file_date = datetime.datetime(year=date.year,
+                                      month=date.month,
+                                      day=date.day,
+                                      hour=(3 + 6 * (date.hour // 6)))
+
+        # Reattempt data request for previous cycles until 2 days. Beyond two days,
+        # no future values would be present since the forecast period is for 2 days.
+        while date - file_date <= datetime.timedelta(days=2.0):
+            try:
+                # Request dataset proxy from API. Accesses to this proxy will download the data.
+                return pydapclient.open_url(url=f'https://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/NGOFS2/MODELS/{file_date.year:04}/{file_date.month:02}/{file_date.day:02}/nos.ngofs2.stations.forecast.{file_date.year:04}{file_date.month:02}{file_date.day:02}.t{file_date.hour:02}z.nc')
+            except Exception:
+                # Try again for previous cycle
+                file_date -= datetime.timedelta(hours=6.0)
+
+    def transform_from_api(self, dataset_proxy, latitudes: list[float], longitudes: list[float],
+                           latlong_delta: float, min_date_resolution: datetime.timedelta) -> None:
+        '''Transforms data extracted from NOAA NGOFS2 forecast dataset
+        and stores it into internal dataframe.
+
+        Parameters:
+        dataset_proxy: DAP2 proxy for weather forecast dataset.
+        latitudes: Latitudes in [-180, 180) degrees.
+        longitudes: Longitudes in [-180, 180) degrees.
+        latlong_delta: Maximum difference between HAB and weather
+        forecast data latitude and longitude.
+        min_date_resolution: Minimum time resolution for weather
+        forecast data. Default is 4 hours.'''
+        log = self._GetLogger('Transforming weather forecast data from API')
+
+        transformed_data = {'DATETIME': [],
+                            'LATITUDE': [],
+                            'LONGITUDE': [],
+                            'WATER_TEMP': [],
+                            'SALINITY': [],
+                            'WIND_SPEED': [],
+                            'WIND_DIR': []}
+
+        # Download data. Data structure:
+        #   [station_index] for location data.
+        #   [time_index] for time data.
+        #   [time_index][sigma_layer][station_index] for water
+        #   temperature and salinity. Take data from first sigma
+        #   layer.
+        #   [time_index][station_index] for wind velocities
+        #   Location data index is station index.
+        #   Time data index is time index.
+        lat_data = dataset_proxy['lat'][:].data
+        lon_data = dataset_proxy['lon'][:].data
+        time_data = dataset_proxy['time'][:].data
+        salinity_data = dataset_proxy['salinity'][:].data
+        water_temp_data = dataset_proxy['temp'][:].data
+        eastward_wind_velocity_data = dataset_proxy['uwind_speed'][:].data
+        northward_wind_velocity_data = dataset_proxy['vwind_speed'][:].data
+
+        for location_index in range(len(latitudes)):
+            # Convert [0, 360) degrees to [0, 2*pi) radian
+            latitude_radian = 2 * np.pi * latitudes[location_index] / 360.0
+            longitude_radian = 2 * np.pi * longitudes[location_index] / 360.0
+
+            # Find closest station within delta
+            closest_station_index = None
+            min_distance = None
+
+            for station_index in range(len(lat_data)):
+                # Only consider locations within delta. Convert station latitude and longitude
+                # from [0, 360) degrees to [-180, 180) degrees for equal formats.
+                if (abs(latitudes[location_index] - (lat_data[station_index] if lat_data[station_index] < 180.0 else lat_data[station_index] - 360.0)) <= latlong_delta
+                    and abs(longitudes[location_index] - (lon_data[station_index] if lon_data[station_index] < 180.0 else lon_data[station_index] - 360.0)) <= latlong_delta):
+                    # Convert [0, 360) degrees to [0, 2*pi) radian
+                    station_latitude_radian = 2 * np.pi * lat_data[station_index] / 360.0
+                    station_longitude_radian = 2 * np.pi * lon_data[station_index] / 360.0
+
+                    # Calculate distance between lat-long points using
+                    # haversine formula for a cental angle
+                    distance = (12742 * np.arcsin(np.sqrt((np.sin(station_latitude_radian - latitude_radian) ** 2)) / 2.0
+                                + np.cos(latitude_radian) * np.cos(station_latitude_radian) * np.sin((station_longitude_radian - longitude_radian) / 2.0) ** 2.0))
+
+                    if min_distance is None or distance < min_distance:
+                        closest_station_index = station_index
+                        min_distance = distance
+
+            # Transform data if a station within delta is found
+            if closest_station_index is not None:
+                last_datetime = None
+
+                for time_index in range(len(time_data)):
+                    # Convert date from days since 2019-01-01 00:00:00
+                    converted_time = datetime.datetime(year=2019, month=1, day=1) + datetime.timedelta(days=float(time_data[time_index]))
+
+                    # Only insert data for a given time resolution. Assumes that data from API is in ascending time order.
+                    if last_datetime is None or converted_time - last_datetime >= min_date_resolution:
+                        last_datetime = converted_time
+                        transformed_data['DATETIME'].append(converted_time)
+
+                        # Convert latitude and longitude from [0, 360) degrees to [-180, 180) degrees
+                        transformed_data['LATITUDE'].append(latitudes[location_index] if latitudes[location_index] < 180.0 else latitudes[location_index] - 360.0)
+                        transformed_data['LONGITUDE'].append(longitudes[location_index] if longitudes[location_index] < 180.0 else longitudes[location_index] - 360.0)
+
+                        # Water temperature is in Centigrade and salinity is in ppt. Use first sigma layer.
+                        transformed_data['WATER_TEMP'].append(water_temp_data[time_index][0][closest_station_index])
+                        transformed_data['SALINITY'].append(salinity_data[time_index][0][closest_station_index])
+
+                        # Convert eastward and northward wind speeds in m/s to wind speed in mpg and direction in degrees
+                        transformed_data['WIND_SPEED'].append(np.sqrt(eastward_wind_velocity_data[time_index][closest_station_index] ** 2 + northward_wind_velocity_data[time_index][closest_station_index] ** 2) / 1609.344 * 3600.0)
+                        try:
+                            # Convert [-180, 180) degrees to [0, 360) degrees
+                            transformed_data['WIND_DIR'].append((np.arctan(northward_wind_velocity_data[time_index][closest_station_index] / eastward_wind_velocity_data[time_index][closest_station_index]) + (2.0 * np.pi)) / (2.0 * np.pi) * 360.0)
+                        except ZeroDivisionError:
+                            # Handle case of 0 eastward wind speed (90 or 270 degrees)
+                            transformed_data['WIND_DIR'].append(90.0 if northward_wind_velocity_data[time_index][closest_station_index] >= 0.0 else 270.0)
+
+        self._df = pd.DataFrame(transformed_data)
+
+    def load_to_database(self) -> None:
+        '''Loads dataframe to MySQL database.'''
+        log = self._GetLogger('Loading weather forecast data to database')
+
+        # Connect to database
+        db = MySQLdb.connect(host=DATABASES['default']['HOST'],
+                             port=int(DATABASES['default']['PORT']),
+                             database=DATABASES['default']['NAME'],
+                             user=DATABASES['default']['USER'],
+                             password=DATABASES['default']['PASSWORD'])
+        db_cursor = db.cursor()
+
+        # Insert rows
+        for row_index in self._df.index:
+            query = f'INSERT INTO {self._database_table_name}({",".join(self._df.keys())}) VALUES ('
+
+            for column_index in range(len(self._df.keys())):
+                if column_index > 0:
+                    query += ','
+
+                if self._df.keys()[column_index] == 'DATETIME':
+                    query += f'"{self._df[self._df.keys()[column_index]][row_index].strftime("%Y-%m-%d %H:%M:%S")}"'
+                elif pd.isnull(self._df[self._df.keys()[column_index]][row_index]):
+                    query += 'NULL'
+                else:
+                    query += str(self._df[self._df.keys()[column_index]][row_index])
+
+            query += ')'
+
+            db_cursor.execute(query)
+
+        db.commit()
+        db.close()
+
+    def _GetLogger(self, message: str):
+        if self._logger is not None:
+            return self._logger.get_log_token(message)
+        return None
+
+
 class ETLManager:
     def __init__(self, enable_logging: bool=False, log_file_dir: str=None, use_test_db: bool=False):
-        self._database_table_name = 'habsos_j_test' if use_test_db else 'habsos_j'
+        self._hab_database_table_name = 'habsos_j_test' if use_test_db else 'habsos_j'
+        self._forecast_database_table_name = 'forecast_j_test' if use_test_db else 'forecast_j'
         if enable_logging:
             self._logger = ETLLogger(log_file_dir=log_file_dir)
         else:
             self._logger = None
 
     def run_etl(self, start_date: datetime.datetime=None, end_date: datetime.datetime=None,
-                supplement_from_weather_data: bool=True, date_delta: float=1.0, latlong_delta: float=0.1,
-                chunk_size_days: int=180, allow_missing_rows: bool=False):
-        '''
+                supplement_from_weather_data: bool=True, date_delta: float=datetime.timedelta(days=1.0),
+                latlong_delta: float=0.1, min_forecast_date_resolution: datetime.timedelta=datetime.timedelta(hours=4.0),
+                chunk_size_days: int=180, allow_missing_rows: bool=False,
+                skip_hab_etl: bool=False, skip_weather_forecast_etl: bool=False):
+        '''Runs complete ETL for HAB and weather forecast data.
+
         Parameters:
         start_date: Start sample date for extraction, inclusive. If
         None, then the latest time in the database is used, exclusive.
@@ -584,19 +783,25 @@ class ETLManager:
         supplement_from_weather_data: Whether to supplement missing
         data from different weather datasets. Default is True.
         date_delta: Maximum difference between HAB and weather data
-        sample dates in days for merging. Default is 1.
+        sample dates for merging. Default is 1 day.
         latlong_delta: Maximum difference between HAB and weather
         data latitude and longitude for merging. Default is 0.1.
+        min_forecast_date_resolution: Minimum time resolution for
+        weather forecast data. Default is 4 hours.
         chunk_size_days: Time interval size in days to perform each ETL
         operation in. Default is 180.
         allow_nan_rows: Whether to allow rows with missing values to be
-        loaded into the MySQL database. Default is False.'''
+        loaded into the MySQL database. Default is False.
+        skip_hab_etl: Whether to skip ETL for HAB data. Default is
+        False.
+        skip_weather_forecast_etl: Whether to skip ETL for weather
+        forecast data. Default is False.'''
         # If start date is not specified, then use latest timestamp
         # from database (exclusive)
         start_date_exclusive = False
 
         if start_date == None:
-            start_date = ETLManager._get_latest_sample_date_from_database(self._database_table_name)
+            start_date = ETLManager._get_latest_sample_date_from_database(self._hab_database_table_name)
             start_date_exclusive = True
 
         # If end date is not specified, then use current time
@@ -608,45 +813,72 @@ class ETLManager:
         if start_date is None:
             start_date = datetime.datetime(year=1953, month=1, day=1)
 
-        chunk_start_date = start_date
-        chunk_end_date = end_date
-
-        while chunk_start_date < end_date:
-            # Limit ETL interval within chunk size
-            if chunk_end_date - chunk_start_date > datetime.timedelta(days=chunk_size_days):
-                chunk_end_date = chunk_start_date + datetime.timedelta(days=chunk_size_days)
-
-            # Chunks after first must have exclusive start date to
-            # prevent duplicating data from end of previous chunk
-            if start_date != chunk_start_date:
-                start_date_exclusive = True
-
-            if self._logger is not None:
-                log = self._logger.get_log_token(f'Running ETL for {chunk_start_date.isoformat()} to {chunk_end_date.isoformat()}')
-
-            # Run ETL in chunks to prevent system from running out of
-            # memory for very large requests
-            hab_data = HABDataETLHelper(database_table_name=self._database_table_name, logger=self._logger)
-            hab_data.run_etl_from_api(start_date=chunk_start_date,
-                                      end_date=chunk_end_date,
-                                      start_date_exclusive=start_date_exclusive,
-                                      supplement_from_weather_data=supplement_from_weather_data,
-                                      date_delta=date_delta,
-                                      latlong_delta=latlong_delta,
-                                      allow_nan_rows=allow_missing_rows)
-
-            if self._logger is not None:
-                del log
-
-            # Calculate next date interval starting from start of next month
-            chunk_start_date = chunk_end_date
+        # Run ETL for HAB data, if not skipped
+        if not skip_hab_etl:
+            chunk_start_date = start_date
             chunk_end_date = end_date
 
-    def clear_database(self):
-        '''Deletes all rows from database table.'''
-        if self._logger is not None:
-            log = self._logger.get_log_token('Clearing database')
+            while chunk_start_date < end_date:
+                # Limit ETL interval within chunk size
+                if chunk_end_date - chunk_start_date > datetime.timedelta(days=chunk_size_days):
+                    chunk_end_date = chunk_start_date + datetime.timedelta(days=chunk_size_days)
 
+                # Chunks after first must have exclusive start date to
+                # prevent duplicating data from end of previous chunk
+                if start_date != chunk_start_date:
+                    start_date_exclusive = True
+
+                if self._logger is not None:
+                    log = self._logger.get_log_token(f'Running ETL for {chunk_start_date.isoformat()} to {chunk_end_date.isoformat()}')
+
+                # Run ETL in chunks to prevent system from running out of
+                # memory for very large requests
+                hab_data = HABDataETLHelper(database_table_name=self._hab_database_table_name, logger=self._logger)
+                hab_data.run_etl_from_api(start_date=chunk_start_date,
+                                        end_date=chunk_end_date,
+                                        start_date_exclusive=start_date_exclusive,
+                                        supplement_from_weather_data=supplement_from_weather_data,
+                                        date_delta=date_delta,
+                                        latlong_delta=latlong_delta,
+                                        allow_nan_rows=allow_missing_rows)
+
+                if self._logger is not None:
+                    del log
+
+                # Calculate next date interval starting from start of next month
+                chunk_start_date = chunk_end_date
+                chunk_end_date = end_date
+
+        # Run ETL for weather forecast data, if not skipped. Use end date for the forecast dataset.
+        if not skip_weather_forecast_etl:
+            weather_forecast_data = WeatherForecastDataETLHelper(database_table_name=self._forecast_database_table_name,
+                                                                 logger=self._logger)
+
+            # Get all distinct (latitude, longitude) locations in HAB database
+            latitudes, longitudes = self._get_distinct_locations_from_hab_database()
+
+            # Clear old forecast data first
+            self.clear_forecast_database()
+
+            weather_forecast_data.run_etl_from_api(date=end_date,
+                                                   latitudes=latitudes,
+                                                   longitudes=longitudes,
+                                                   latlong_delta=latlong_delta,
+                                                   min_date_resolution=min_forecast_date_resolution)
+
+    def clear_hab_database(self):
+        '''Deletes all rows from the HAB database table.'''
+        if self._logger is not None:
+            log = self._logger.get_log_token('Clearing HAB database')
+        self._clear_database(self._hab_database_table_name)
+
+    def clear_forecast_database(self):
+        '''Deletes all rows from the weather forecast database table.'''
+        if self._logger is not None:
+            log = self._logger.get_log_token('Clearing forecast database')
+        self._clear_database(self._forecast_database_table_name)
+
+    def _clear_database(self, database_table_name: str):
         # Connect to database
         db = MySQLdb.connect(host=DATABASES['default']['HOST'],
                              port=int(DATABASES['default']['PORT']),
@@ -656,7 +888,7 @@ class ETLManager:
         db_cursor = db.cursor()
 
         # Delete every row in database
-        db_cursor.execute(f'DELETE FROM {self._database_table_name}')
+        db_cursor.execute(f'DELETE FROM {database_table_name}')
         db.commit()
         db.close()
 
@@ -712,34 +944,78 @@ class ETLManager:
 
         return sample_date
 
+    def _get_distinct_locations_from_hab_database(self) -> list[list[float], list[float]]:
+        '''Returns all disticts locations in HAB database in
+        [latitude, longitude].'''
+        # Connect to database
+        db = MySQLdb.connect(host=DATABASES['default']['HOST'],
+                             port=int(DATABASES['default']['PORT']),
+                             database=DATABASES['default']['NAME'],
+                             user=DATABASES['default']['USER'],
+                             password=DATABASES['default']['PASSWORD'])
+        db_cursor = db.cursor()
+
+        # Query for oldest timestamp
+        db_cursor.execute(f'SELECT DISTINCT LATITUDE, LONGITUDE FROM {self._hab_database_table_name}')
+
+        locations = [[], []]
+
+        row = db_cursor.fetchone()
+
+        while row is not None:
+            locations[0].append(row[0])
+            locations[1].append(row[1])
+            row = db_cursor.fetchone()
+
+        db.close()
+
+        return locations
+
 
 # If running this file, then perform the automation ETL routine
 if __name__ == '__main__':
-    # Get arguments
-    clear_database = '-cleardb' in sys.argv
-    use_test_db = '-testdb' in sys.argv
-    use_date_range = '-daterange' in sys.argv
-
     start_date = None
     end_date = None
 
-    # If using date range, the following two arguments must be dates
-    # in ISO format in order of start date, end_date.
-    if use_date_range:
-        for arg_index in range(len(sys.argv)):
-            if sys.argv[arg_index] == '-daterange':
-                use_test_db = True
-                if arg_index < len(sys.argv) - 2:
-                    start_date = datetime.datetime.fromisoformat(sys.argv[arg_index + 1])
-                    end_date = datetime.datetime.fromisoformat(sys.argv[arg_index + 2])
-                break
+    # Get arguments
+    arg_index = 1  # Skip script name
+    clear_database = False
+    use_test_db = False
+    skip_hab_etl = False
+    skip_weather_forecast_etl = False
+
+    while arg_index < len(sys.argv):
+        if sys.argv[arg_index] == '-cleardb':
+            clear_database = True
+        elif sys.argv[arg_index] == '-testdb':
+            use_test_db = True
+        elif sys.argv[arg_index] == '-daterange':
+            # If using date range, the following two arguments must be dates in ISO format in order of start date, end_date
+            if arg_index < len(sys.argv) - 2:
+                arg_index += 1
+                start_date = datetime.datetime.fromisoformat(sys.argv[arg_index])
+                arg_index += 1
+                end_date = datetime.datetime.fromisoformat(sys.argv[arg_index])
+            else:
+                print(f'Daterange needs 2 date arguments in ISO format.')
+                exit(-1)
+        elif sys.argv[arg_index] == '-skipforecast':
+            skip_weather_forecast_etl = True
+        elif sys.argv[arg_index] == '-skiphab':
+            skip_hab_etl = True
+        else:
+            print(f'Argument not recognized: {sys.argv[arg_index]}')
+            exit(-1)
+
+        arg_index += 1
 
     # TODO: Determine a proper log file directory
     mgr = ETLManager(enable_logging=True, log_file_dir='.', use_test_db=use_test_db)
 
     # Delete data in database, if requested
     if clear_database:
-        mgr.clear_database()
+        if not skip_hab_etl:
+            mgr.clear_hab_database()
 
     # Run routine ETL procedure
     mgr.run_etl(start_date=start_date,
@@ -747,5 +1023,8 @@ if __name__ == '__main__':
                 supplement_from_weather_data=True,
                 date_delta=datetime.timedelta(days=1.0),
                 latlong_delta=0.2,
+                min_forecast_date_resolution=datetime.timedelta(hours=4.0),
                 chunk_size_days=180,
-                allow_missing_rows=True)
+                allow_missing_rows=True,
+                skip_hab_etl=skip_hab_etl,
+                skip_weather_forecast_etl=skip_weather_forecast_etl)
