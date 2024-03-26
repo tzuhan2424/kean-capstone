@@ -51,36 +51,46 @@ class searchHabsosDb(APIView):
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except ValueError as e:
             return JsonResponse({'error': str(e)}, status=400)
+        
+class searchHabsosDbCondition(APIView):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            # print(data)
+            # Extract the search parameters from the JSON data
+            genus = data.get('genus')
+            species = data.get('species')
+            from_date_str = data.get('fromDate') + " 00:00:00"
+            to_date_str = data.get('toDate') + " 23:59:59"
+            category = data.get('category')
+            intensity = data.get('intensity')
 
-# class searchHabsosDb(APIView):
-#     def post(self, request):
-#         try:
-#             data = json.loads(request.body)
-            
-#             # Extract the search parameters from the JSON data
-#             genus = data.get('genus')
-#             species = data.get('species')
-#             from_date_str = data.get('fromDate') + " 00:00:00"
-#             to_date_str = data.get('toDate') + " 23:59:59"
-#             # print('from_date_str', from_date_str)
-#             # print('to_date_str', to_date_str)
 
-#             # Use Django's ORM to query the database
-#             queryset = HabsosT.objects.filter(
-#                 genus=genus,
-#                 species=species,
-#                 sample_datetime__gte=from_date_str,
-#                 sample_datetime__lte=to_date_str
-#             )
-#             # print(str(queryset.query))
+
+
+            # Use Django's ORM to query the database
+            queryset = HabsosJ.objects.filter(
+                genus=genus,
+                species=species,
+                sample_datetime__gte=from_date_str,
+                sample_datetime__lte=to_date_str
+            )
+            if category and category != 'all':
+                queryset = queryset.filter(category=category)
+            elif intensity is not None: 
+                queryset = queryset.filter(cellcount__gte=intensity)
+
+            # print(str(queryset.query))
 
          
-#             serializer = HabsosTSerializer(queryset, many=True)
-#             return JsonResponse(serializer.data, safe=False)
-#         except json.JSONDecodeError:
-#             return JsonResponse({'error': 'Invalid JSON'}, status=400)
-#         except ValueError as e:
-#             return JsonResponse({'error': str(e)}, status=400)
+            serializer = HabsosJSerializer(queryset, many=True)
+            return JsonResponse(serializer.data, safe=False)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except ValueError as e:
+            return JsonResponse({'error': str(e)}, status=400)
+        
+
 
 
 class PredictResult(APIView):
