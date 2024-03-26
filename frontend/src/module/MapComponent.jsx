@@ -229,7 +229,7 @@ const MapComponent = ({ points, area, isPredict }) => {
             { fieldName: "latitude", label: "latitude" },
             { fieldName: "predict_category", label: "Predict_category"},
             { fieldName: "description", label: "Description" },
-            { fieldName: "sample_datetime", label: "Sample Date" },
+            { fieldName: "datetime", label: "Sample Date" },
             { fieldName: "cellcount", label: "Cell Count(cells/L)" },
             { fieldName: "salinity", label: "Salinity (ppt)" },
             { fieldName: "water_temp", label: "Water Temperature (°C)" },

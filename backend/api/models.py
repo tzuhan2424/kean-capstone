@@ -104,3 +104,18 @@ class HabsosPrediction(models.Model):
     class Meta:
         managed = False
         db_table = 'habsos_prediction'
+
+class ForecastJ(models.Model):
+    id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
+    datetime = models.DateTimeField(db_column='DATETIME')  # Field name made lowercase.
+    latitude = models.FloatField(db_column='LATITUDE')  # Field name made lowercase.
+    longitude = models.FloatField(db_column='LONGITUDE')  # Field name made lowercase.
+    water_temp = models.FloatField(db_column='WATER_TEMP', blank=True, null=True)  # Field name made lowercase.
+    salinity = models.FloatField(db_column='SALINITY', blank=True, null=True)  # Field name made lowercase.
+    wind_speed = models.FloatField(db_column='WIND_SPEED', blank=True, null=True)  # Field name made lowercase.
+    wind_dir = models.IntegerField(db_column='WIND_DIR', blank=True, null=True)  # Field name made lowercase.
+    predict_category = models.CharField(db_column='PREDICT_CATEGORY', max_length=45, blank=True, null=True)  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        db_table = 'forecast_j'
