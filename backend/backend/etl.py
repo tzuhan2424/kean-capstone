@@ -1023,7 +1023,7 @@ if __name__ == '__main__':
                 supplement_from_weather_data=True,
                 date_delta=datetime.timedelta(days=1.0),
                 latlong_delta=0.2,
-                min_forecast_date_resolution=datetime.timedelta(hours=4.0),
+                min_forecast_date_resolution=datetime.timedelta(days=1.0),
                 chunk_size_days=180,
                 allow_missing_rows=True,
                 skip_hab_etl=skip_hab_etl,
