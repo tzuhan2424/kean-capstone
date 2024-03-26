@@ -16,7 +16,7 @@ CustomTabPanel.propTypes = {
 
 
 
-const NavBar = ({ onDateChange, onSubmit, dates, areas, onAreaChange, onPredict}) => {
+const NavBar = ({ onDateChange, onSubmit, dates, areas, onAreaChange, onPredict, setCondition}) => {
   const [value, setValue] = React.useState(0);
   const handleChange = (event, newValue) => {
     setValue(newValue);
@@ -36,6 +36,7 @@ const NavBar = ({ onDateChange, onSubmit, dates, areas, onAreaChange, onPredict}
               onDateChange={onDateChange}
               onSubmit = {onSubmit}
               dates = {dates}
+              setCondition={setCondition}
             />
           </CustomTabPanel>
           <CustomTabPanel value={value} index={1}>

@@ -17,6 +17,9 @@ const MainApp = () => {
   const [recordCount, setRecordCount] = useState(0);
 
   const [selectedArea, setSelectedArea] = useState(null);
+  const [isPredict, setIsPredict] = useState(false);
+  const [condition, setCondition] = useState({}); //conditional search
+
   const handleAreaChange = (event) => {
     const areaName = event.target.value;
     const area = areas.find(a => a.name === areaName);
@@ -31,8 +34,7 @@ const MainApp = () => {
   });
   const [hasFetchedInitialData, setHasFetchedInitialData] = useState(false);
 
-  // console.log('dates',dates)
-  // console.log('formattedDate', formattedDate)
+
 
 
 
@@ -68,6 +70,22 @@ const MainApp = () => {
     });
   };
 
+  const FetchDatafromCondition = (searchParams) => {
+    setIsLoading(true); // Start loading
+    console.log(searchParams);
+    axios.post('http://localhost:8000/api/searchHabsosDbCondition', searchParams)
+    .then(response => {
+      setResults(response.data);
+      setRecordCount(response.data.length); // Update record count based on response
+      setIsLoading(false); // Stop loading
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      setIsLoading(false); // Stop loading in case of error
+    });
+}
+
+
   useEffect(() => {
     if (!hasFetchedInitialData && formattedDate.fromDate && formattedDate.toDate) {
       FetchData(formattedDate.fromDate, formattedDate.toDate);
@@ -76,11 +94,20 @@ const MainApp = () => {
   }, [formattedDate, hasFetchedInitialData]);
 
 
-  const [isPredict, setIsPredict] = useState(false);
+
+
   const handleSubmit = () => {
     setIsPredict(false);
     setSelectedArea(null);
-    FetchData(formattedDate.fromDate, formattedDate.toDate);
+    console.log('mainapp,',condition);
+    // fetch based on condition
+    FetchDatafromCondition({
+      genus: 'Karenia',
+      species: 'brevis',
+      fromDate: formattedDate.fromDate,
+      toDate: formattedDate.toDate,
+      ...condition // assuming condition is an object containing additional search parameters
+    });
   };
 
   const PredictBasedOnArea = (selectedArea)=>{
@@ -125,6 +152,7 @@ const MainApp = () => {
           areas={areas}
           onAreaChange={handleAreaChange}
           onPredict={handlePredict}
+          setCondition={setCondition}
           />
 
         <div id ='fetch-loading-box'> 

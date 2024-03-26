@@ -3,13 +3,19 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate } from '../helper/MainAppHelper';
 import { passDateCheck,passDateRangeCheck } from '../helper/MainAppHelper';
+import ConditionSelector from './ConditionSelector';
 
-const SearchTab = ({ onDateChange, onSubmit, dates }) => {
-
+const SearchTab = ({ onDateChange, onSubmit, dates, setCondition}) => {
   const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
   const [fromDateValidationError, setFromDateValidationError] = useState(''); 
   const [endDateValidationError, setEndDateValidationError] = useState(''); 
   const [DateValidationError, setDateValidationError] = useState(''); 
+
+
+  const onConditionChange = (data) => {
+    setCondition(data);
+    console.log('Updated condition:', data);
+  };
 
   useEffect(() => {
     // Assuming `formatDate` returns a string in 'YYYY-MM-DD' format
@@ -51,7 +57,7 @@ const SearchTab = ({ onDateChange, onSubmit, dates }) => {
 
   return (
     <div>
-        <div className = 'date-range-picker'>
+      <div className = 'date-range-picker'>
             <div>From:</div>
             <DatePicker
                 selected={dates.startDate}
@@ -80,8 +86,14 @@ const SearchTab = ({ onDateChange, onSubmit, dates }) => {
             {endDateValidationError && <div style={{ color: 'red' }}>{endDateValidationError}</div>}
             {DateValidationError && <div style={{ color: 'red' }}>{DateValidationError}</div>}
 
-        </div>
-        <button onClick={handleSubmit}>Submit</button>
+      </div>
+
+
+      <ConditionSelector onConditionChange={setCondition}/>
+
+
+
+      <button onClick={handleSubmit}>Submit</button>
 
       
     </div>
