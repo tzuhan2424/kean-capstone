@@ -36,6 +36,21 @@ class Database:
         self.cursor.execute(query, params)
         self.conn.commit()
 
+    def update_predictions(self, table, predictions, ids):
+        """Updates the table with the new predictions using the corresponding IDs."""
+        update_query = f"UPDATE {table} SET PREDICT_CATEGORY = %s WHERE ID = %s;"
+        # Process updates in batches and log progress
+        batch_size = 1000
+        for i in range(0, len(predictions), batch_size):
+            batch_predictions = predictions[i:i+batch_size]
+            batch_ids = ids[i:i+batch_size]
+            update_data = [(int(pred), int(id_)) for pred, id_ in zip(batch_predictions, batch_ids)]
+            
+            self.cursor.executemany(update_query, update_data)
+            self.conn.commit()
+
+            print(f"Updated {i + len(update_data)} rows in {table}")
+
     def close(self):
         """Closes the cursor and connection."""
         self.cursor.close()

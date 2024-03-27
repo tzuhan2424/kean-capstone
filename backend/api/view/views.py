@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
-from ..models import Test, Sport, HabsosT,HabsosJ, HabsosPrediction
-from ..serializer.serializers import HabsosTSerializer,HabsosJSerializer, HabsosPredictionSerializer
+from ..models import Test, Sport, HabsosT,HabsosJ, HabsosPrediction, ForecastJ
+from ..serializer.serializers import HabsosTSerializer,HabsosJSerializer, HabsosPredictionSerializer, ForecastJSerializer
 from rest_framework.views import APIView
 from django.db import connection
 from rest_framework.response import Response
@@ -90,6 +90,63 @@ class searchHabsosDbCondition(APIView):
         except ValueError as e:
             return JsonResponse({'error': str(e)}, status=400)
         
+
+class ForecastPredictResult(APIView):
+    def generatePredict(self, observations):
+        total_predict_category = 0
+        NofRows= len(observations)
+        for obs in observations:
+            total_predict_category += int(obs.predict_category or 0)
+
+        predictChance = total_predict_category
+        threshold_low = 4*NofRows/3
+        threshold_high = 4*NofRows*2/3
+        predictResult = ""
+        if predictChance<threshold_low:
+            predictResult = 'low'
+        elif threshold_low<predictChance<threshold_high:
+            predictResult = 'middle'
+        else:
+            predictResult = 'high'
+        return predictResult
+
+    def post(self, request):
+        area_name = request.data.get('name')
+        area_coordinates = request.data.get('coordinates')
+
+        print(area_coordinates)
+        if area_coordinates:
+
+            if area_coordinates=="all":
+                observations = ForecastJ.objects.all()
+            else:
+                x1, y1, x2, y2 = area_coordinates
+                x_min = min(x1, x2)
+                x_max = max(x1, x2)
+                y_min = min(y1, y2)
+                y_max = max(y1, y2)
+
+                observations = ForecastJ.objects.filter(
+                    latitude__gte=y_min,
+                    latitude__lte=y_max,
+                    longitude__gte=x_min,
+                    longitude__lte=x_max
+                )
+            # print(str(observations.query))
+            result = self.generatePredict(observations)
+            serializer = ForecastJSerializer(observations, many=True)
+
+            prediction_result = {
+                "status": "success",
+                "area": area_name,
+                "points": serializer.data,
+                "result": result 
+            }
+        else:
+            prediction_result = {"status": "error", "message": "Invalid coordinates"}
+        
+        
+        return JsonResponse(prediction_result)
 
 
 

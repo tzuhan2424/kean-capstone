@@ -12,7 +12,7 @@ import mapConfig from './config/mapConfig';
 import './css/map.css';
 import {drawBoundingBoxes} from "./helper/bbox";
 import bbox from "./helper/bbox.json";
-
+import categoryMapping from "./config/categoryMapping"
 const MapComponent = ({ points, area, isPredict }) => {
   const [mapView, setMapView] = useState(null);
   
@@ -92,7 +92,9 @@ const MapComponent = ({ points, area, isPredict }) => {
   };
   const getPredictSymbol = (category) => {
     let symbol;
-    switch (category) {
+    const categoryStr = String(category);  // or category.toString();
+
+    switch (categoryStr) {
       case '0':
         symbol = new SimpleMarkerSymbol({
           style: "x",
@@ -206,11 +208,101 @@ const MapComponent = ({ points, area, isPredict }) => {
     mapView.map.findLayerById('graphicsLayer').add(pointGraphic);
   };
 
+  function getCategoryText(numericCategory) {
+    
+    return categoryMapping[numericCategory] || 'Unknown'; // Default to 'Unknown' if no mapping exists
+  }
+
+  function aggregatePointsByLocation(points) {
+    // console.log('aggregate');
+    // console.log(points);
+    const groupedByLocation = points.reduce((acc, point) => {
+      const coordsKey = `${point.latitude}_${point.longitude}`;
+      if (!acc[coordsKey]) {
+        acc[coordsKey] = {
+          latitude: point.latitude,
+          longitude: point.longitude,
+          predictions: []
+        };
+      }
+      acc[coordsKey].predictions.push({
+        datetime: point.datetime,
+        predict_category: point.predict_category,
+        predict_category_txt: getCategoryText(point.predict_category),
+        salinity: point.salinity,
+        water_temp: point.water_temp,
+        wind_dir: point.wind_dir,
+        wind_speed: point.wind_speed
+      });
+      return acc;
+    }, {});
+  
+    return Object.values(groupedByLocation).map(location => {
+      const totalCategory = location.predictions.reduce((acc, pred) => {
+        return acc + parseInt(pred.predict_category, 10);  // Use parseInt for integers, parseFloat for decimal numbers
+      }, 0);
+      const avgCategory = Math.round(totalCategory / location.predictions.length);
+
+      return {
+          ...location,
+          avg_category: avgCategory,
+          predictions: location.predictions.sort((a, b) => new Date(a.datetime) - new Date(b.datetime))
+      };
+    });
+  }
+
+
+
+  const createAndAddGraphicPredictionAgg = (locationWithPredictions) => {
+    const { longitude, latitude, predictions, avg_category} = locationWithPredictions;
+  
+    // Construct the HTML content for the popup
+    let popupContent = `<table>
+      <tr><th>Date</th><th>Predict Category</th><th>Salinity</th><th>Water Temp</th><th>Wind Dir</th><th>Wind Speed</th></tr>`;
+    predictions.forEach(pred => {
+      popupContent += `<tr>
+        <td>${new Date(pred.datetime).toLocaleDateString()}</td>
+        <td>${pred.predict_category_txt}</td>
+        <td>${pred.salinity}</td>
+        <td>${pred.water_temp}</td>
+        <td>${pred.wind_dir}</td>
+        <td>${pred.wind_speed}</td>
+      </tr>`;
+    });
+    popupContent += `</table>`;
+  
+    const pointGraphic = new Graphic({
+      geometry: {
+        type: 'point',
+        longitude,
+        latitude
+      },
+      symbol: getPredictSymbol(avg_category), // Assuming the first prediction has the symbol
+      attributes: locationWithPredictions,
+      popupTemplate: {
+        title: "Predictions for {latitude}, {longitude}, {avg_category}",
+        content: popupContent
+      }
+    });
+    mapView.map.findLayerById('graphicsLayer').add(pointGraphic);
+  };
+
+
   const createAndAddGraphicPrediction=(point)=>{
     const { longitude, latitude, predict_category, ...otherAttributes } = point;
-    const attributes = { ...otherAttributes, predict_category, longitude, latitude };
-    const symbol = getPredictSymbol(predict_category);
     
+    const predictCategoryText = getCategoryText(predict_category);
+
+    const attributes = { 
+      ...otherAttributes, 
+      predict_category,
+      predict_category_txt: predictCategoryText, // Use the transformed category text here
+      longitude, 
+      latitude 
+    };
+    
+    const symbol = getPredictSymbol(predict_category);
+
     const pointGraphic = new Graphic({
       geometry: {
         type: 'point',
@@ -227,10 +319,9 @@ const MapComponent = ({ points, area, isPredict }) => {
           fieldInfos: [
             { fieldName: "longitude", label: "longitude" },
             { fieldName: "latitude", label: "latitude" },
-            { fieldName: "predict_category", label: "Predict_category"},
+            { fieldName: "predict_category_txt", label: "Predict_category"},
             { fieldName: "description", label: "Description" },
-            { fieldName: "sample_datetime", label: "Sample Date" },
-            { fieldName: "cellcount", label: "Cell Count(cells/L)" },
+            { fieldName: "datetime", label: "Sample Date" },
             { fieldName: "salinity", label: "Salinity (ppt)" },
             { fieldName: "water_temp", label: "Water Temperature (°C)" },
             { fieldName: "wind_dir", label: "Wind Direction" },
@@ -279,7 +370,12 @@ const MapComponent = ({ points, area, isPredict }) => {
       drawBoundingBoxes(graphicsLayer, [{ coordinates: area.coordinates }]);
     }
     if (isPredict){
-      points.forEach(createAndAddGraphicPrediction);
+      // points.forEach(createAndAddGraphicPrediction);
+      const aggregatedPoints = aggregatePointsByLocation(points);
+      console.log(aggregatedPoints);
+      aggregatedPoints.forEach(createAndAddGraphicPredictionAgg);
+
+
     }
     else{
       points.forEach(createAndAddGraphic);
