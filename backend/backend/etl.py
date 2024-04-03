@@ -58,8 +58,6 @@ class _LogToken:
 
 
 class HABDataETLHelper:
-    # Custom datatypes as enum
-    _datatype_datetime_ms = 0
     _api_columns = ['STATE_ID', 'DESCRIPTION', 'LATITUDE', 'LONGITUDE', 'SAMPLE_DATE', 'SAMPLE_DEPTH',
                 'GENUS', 'SPECIES', 'CATEGORY', 'CELLCOUNT', 'CELLCOUNT_UNIT', 'CELLCOUNT_QA',
                 'SALINITY', 'SALINITY_UNIT', 'SALINITY_QA', 'WATER_TEMP', 'WATER_TEMP_UNIT', 'WATER_TEMP_QA',
@@ -208,36 +206,38 @@ class HABDataETLHelper:
         else:
             df_no_nan = self._df.dropna()
 
+        # Optimize insert by using a parametrized query and call executemany
+        query = f'INSERT INTO {self._database_table_name}({",".join(HABDataETLHelper._api_columns + extra_columns)}) VALUES ({",".join(["%s"] * (len(HABDataETLHelper._api_columns) + len(extra_columns)))})'
+
         # Insert rows
+        query_values = []
         for row_index in df_no_nan.index:
-            # Convert from UNIX millisecond timestamp. Due to there being dates before 1970 in the data, this value can be negative.
-            query = f'INSERT INTO {self._database_table_name}({",".join(HABDataETLHelper._api_columns + extra_columns)}) VALUES ('
+            row_values = []
 
             for column_index in range(len(HABDataETLHelper._api_columns)):
-                if column_index > 0:
-                    query += ','
-
                 if HABDataETLHelper._api_columns[column_index] == 'SAMPLE_DATE':
                     # Maintain this date format, as required by front end
-                    query += f'"{df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index].strftime("%m/%d/%Y %H:%M")}"'
+                    row_values.append(f'{df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index].strftime("%m/%d/%Y %H:%M")}')
                 elif pd.isnull(df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index]):
-                    query += 'NULL'
+                    row_values.append(None)
                 elif HABDataETLHelper._api_datatypes[column_index] == pd.StringDtype():
-                    query += f'"{df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index]}"'
+                    row_values.append(f'{df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index]}')
                 else:
-                    query += str(df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index])
+                    row_values.append(str(df_no_nan[HABDataETLHelper._api_columns[column_index]][row_index]))
 
             for column_index in range(len(extra_columns)):
                 if extra_columns[column_index] == 'SAMPLE_DATETIME':
-                    query += f',"{df_no_nan["SAMPLE_DATE"][row_index].strftime("%Y-%m-%d %H:%M:%S")}"'
+                    row_values.append(f'{df_no_nan["SAMPLE_DATE"][row_index].strftime("%Y-%m-%d %H:%M:%S")}')
 
-            query += ')'
+            query_values.append(row_values)
 
-            # Special case: There may be bad dates in data (from conversion error or bad data). Continue execution.
-            try:
-                db_cursor.execute(query)
-            except:
-                pass
+            # # Special case: There may be bad dates in data (from conversion error or bad data). Continue execution.
+            # try:
+            #     db_cursor.execute(query)
+            # except:
+            #     pass
+
+        db_cursor.executemany(query, query_values)
 
         db.commit()
         db.close()
@@ -322,7 +322,11 @@ class HABDataETLHelper:
             # Only run if there are columns with missing data (also checks if there are data in this slice)
             if len(columns_with_null) > 0:
                 # Determine bounding box in (latitude, longitude) coordinates from NW to SE
-                bounding_box = [max(df_slice['LATITUDE']), min(df_slice['LONGITUDE']), min(df_slice['LATITUDE']), max(df_slice['LONGITUDE'])]
+                # encompassing the HAB data slice plus margin for the lat-long delta
+                bounding_box = [max(df_slice['LATITUDE']) + latlong_delta,
+                                min(df_slice['LONGITUDE']) - latlong_delta,
+                                min(df_slice['LATITUDE']) - latlong_delta,
+                                max(df_slice['LONGITUDE']) + latlong_delta]
 
                 # Get weather data for date interval for missing columns.
                 # Can sometimes fail with HTTP status 503, so try again
@@ -350,9 +354,8 @@ class HABDataETLHelper:
                 if not weather_data_df.empty:
                     merge_log = self._GetLogger('Merging HAB and weather data chunk')
 
-                    # Replace missing HAB data with data from best match weather data row. Best match has the following conditions in descending priority:
-                    #  1. The least missing data for the required columns.
-                    #  2. The closest location.
+                    # Replace missing HAB data with data from best match weather data row
+                    # for each column. Best match is the row with the closest location.
                     for index in df_slice.index:
                         # Get weather data with date and location within deltas
                         weather_data_slice = weather_data_df[(weather_data_df['DATE'] - df_slice.loc[index, 'SAMPLE_DATE'] <= date_delta) &
@@ -363,38 +366,31 @@ class HABDataETLHelper:
                         # For each column, get all rows without missing values
                         weather_data_columns_slices = {}
                         for column in columns_with_null:
-                            weather_data_column_silce = weather_data_slice.dropna(subset=column)
+                            weather_data_column_slice = weather_data_slice.dropna(subset=column)
 
                             # Only include columns with data
-                            if len(weather_data_column_silce) > 0:
-                                weather_data_columns_slices[column] = weather_data_column_silce
+                            if len(weather_data_column_slice) > 0:
+                                weather_data_columns_slices[column] = weather_data_column_slice
 
-                        weather_columns = list(weather_data_columns_slices.keys())
-
-                        if len(weather_columns) > 0:
-                            # Find the most common indices
-                            all_indices = pd.Series(weather_data_columns_slices[weather_columns[0]].index.to_list())
-                            for column_index in range(1, len(weather_columns)):
-                                all_indices = pd.concat([all_indices, pd.Series(weather_data_columns_slices[weather_columns[column_index]].index.to_list())], ignore_index=True)
-                            common_indices = all_indices.value_counts()
-                            common_indices = common_indices[common_indices == max(common_indices)]
-
-                            # Get index with closest location
-                            best_match_index = np.nan
-                            best_match_distance = np.nan
-
-                            for weather_index in common_indices.index:
-                                long_diff = weather_data_slice.loc[weather_index, 'LONGITUDE'] - df_slice.loc[index, 'LONGITUDE']
-                                lat_diff = weather_data_slice.loc[weather_index, 'LATITUDE'] - df_slice.loc[index, 'LATITUDE']
-                                distance = (lat_diff ** 2 + long_diff ** 2) ** 0.5
-
-                                if np.isnan(best_match_index) or distance < best_match_distance:
-                                    best_match_index = weather_index
-                                    best_match_distance = distance
-
-                            # Replace missing values from row found
+                        # Only try merge if any data are found for missing columns in weather data
+                        if len(weather_data_columns_slices) > 0:
                             for column in weather_data_columns_slices.keys():
+                                # Only attempt merge if datum is missing
                                 if pd.isnull(self._df.loc[index, column]):
+                                    # Get index with closest location
+                                    best_match_index = np.nan
+                                    best_match_distance = np.nan
+
+                                    for weather_index in weather_data_columns_slices[column].index:
+                                        long_diff = weather_data_columns_slices[column].loc[weather_index, 'LONGITUDE'] - df_slice.loc[index, 'LONGITUDE']
+                                        lat_diff = weather_data_columns_slices[column].loc[weather_index, 'LATITUDE'] - df_slice.loc[index, 'LATITUDE']
+                                        distance = (lat_diff ** 2 + long_diff ** 2) ** 0.5
+
+                                        if np.isnan(best_match_index) or distance < best_match_distance:
+                                            best_match_index = weather_index
+                                            best_match_distance = distance
+
+                                    # Replace missing values from row found
                                     self._df.loc[index, column] = weather_data_columns_slices[column].loc[best_match_index, column]
 
                     if merge_log is not None:
@@ -574,11 +570,12 @@ class WeatherForecastDataETLHelper:
         '''Returns internal dataframe.'''
         return self._df
 
-    def run_etl_from_api(self, date: datetime.datetime, latitudes: list[float],
+    def run_etl_from_api(self, start_date: datetime.datetime, latitudes: list[float],
                          longitudes: list[float], latlong_delta: float,
                          min_date_resolution: datetime.timedelta) -> None:
         self.transform_from_api(
-            dataset_proxy=self.extract_from_api(date=date),
+            dataset_proxy=self.extract_from_api(date=start_date),
+            start_date=start_date,
             latitudes=latitudes,
             longitudes=longitudes,
             latlong_delta=latlong_delta,
@@ -619,13 +616,14 @@ class WeatherForecastDataETLHelper:
                 # Try again for previous cycle
                 file_date -= datetime.timedelta(hours=6.0)
 
-    def transform_from_api(self, dataset_proxy, latitudes: list[float], longitudes: list[float],
+    def transform_from_api(self, dataset_proxy, start_date: datetime.datetime, latitudes: list[float], longitudes: list[float],
                            latlong_delta: float, min_date_resolution: datetime.timedelta) -> None:
         '''Transforms data extracted from NOAA NGOFS2 forecast dataset
         and stores it into internal dataframe.
 
         Parameters:
         dataset_proxy: DAP2 proxy for weather forecast dataset.
+        start_date: Start date for weather forecast, inclusive.
         latitudes: Latitudes in [-180, 180) degrees.
         longitudes: Longitudes in [-180, 180) degrees.
         latlong_delta: Maximum difference between HAB and weather
@@ -695,7 +693,7 @@ class WeatherForecastDataETLHelper:
                     converted_time = datetime.datetime(year=2019, month=1, day=1) + datetime.timedelta(days=float(time_data[time_index]))
 
                     # Only insert data for a given time resolution. Assumes that data from API is in ascending time order.
-                    if last_datetime is None or converted_time - last_datetime >= min_date_resolution:
+                    if converted_time >= start_date and (last_datetime is None or converted_time - last_datetime >= min_date_resolution):
                         last_datetime = converted_time
                         transformed_data['DATETIME'].append(converted_time)
 
@@ -711,7 +709,10 @@ class WeatherForecastDataETLHelper:
                         transformed_data['WIND_SPEED'].append(np.sqrt(eastward_wind_velocity_data[time_index][closest_station_index] ** 2 + northward_wind_velocity_data[time_index][closest_station_index] ** 2) / 1609.344 * 3600.0)
                         try:
                             # Convert [-180, 180) degrees to [0, 360) degrees
-                            transformed_data['WIND_DIR'].append((np.arctan(northward_wind_velocity_data[time_index][closest_station_index] / eastward_wind_velocity_data[time_index][closest_station_index]) + (2.0 * np.pi)) / (2.0 * np.pi) * 360.0)
+                            transformed_data['WIND_DIR'].append(np.arctan(northward_wind_velocity_data[time_index][closest_station_index] / eastward_wind_velocity_data[time_index][closest_station_index]) / (2.0 * np.pi) * 360.0)
+
+                            if transformed_data['WIND_DIR'][-1] < 0.0:
+                                transformed_data['WIND_DIR'][-1] += 360.0
                         except ZeroDivisionError:
                             # Handle case of 0 eastward wind speed (90 or 270 degrees)
                             transformed_data['WIND_DIR'].append(90.0 if northward_wind_velocity_data[time_index][closest_station_index] >= 0.0 else 270.0)
@@ -730,24 +731,25 @@ class WeatherForecastDataETLHelper:
                              password=DATABASES['default']['PASSWORD'])
         db_cursor = db.cursor()
 
+        # Optimize insert by using a parametrized query and call executemany
+        query = f'INSERT INTO {self._database_table_name}({",".join(self._df.keys())}) VALUES ({",".join(["%s"] * len(self._df.keys()))})'
+
         # Insert rows
+        query_values = []
         for row_index in self._df.index:
-            query = f'INSERT INTO {self._database_table_name}({",".join(self._df.keys())}) VALUES ('
+            row_values = []
 
             for column_index in range(len(self._df.keys())):
-                if column_index > 0:
-                    query += ','
-
                 if self._df.keys()[column_index] == 'DATETIME':
-                    query += f'"{self._df[self._df.keys()[column_index]][row_index].strftime("%Y-%m-%d %H:%M:%S")}"'
+                    row_values.append(f'{self._df[self._df.keys()[column_index]][row_index].strftime("%Y-%m-%d %H:%M:%S")}')
                 elif pd.isnull(self._df[self._df.keys()[column_index]][row_index]):
-                    query += 'NULL'
+                    row_values.append(None)
                 else:
-                    query += str(self._df[self._df.keys()[column_index]][row_index])
+                    row_values.append(str(self._df[self._df.keys()[column_index]][row_index]))
 
-            query += ')'
+            query_values.append(row_values)
 
-            db_cursor.execute(query)
+        db_cursor.executemany(query, query_values)
 
         db.commit()
         db.close()
@@ -860,7 +862,7 @@ class ETLManager:
             # Clear old forecast data first
             self.clear_forecast_database()
 
-            weather_forecast_data.run_etl_from_api(date=end_date,
+            weather_forecast_data.run_etl_from_api(start_date=end_date,
                                                    latitudes=latitudes,
                                                    longitudes=longitudes,
                                                    latlong_delta=latlong_delta,
@@ -875,7 +877,7 @@ class ETLManager:
     def clear_forecast_database(self):
         '''Deletes all rows from the weather forecast database table.'''
         if self._logger is not None:
-            log = self._logger.get_log_token('Clearing forecast database')
+            log = self._logger.get_log_token('Clearing weather forecast database')
         self._clear_database(self._forecast_database_table_name)
 
     def _clear_database(self, database_table_name: str):
