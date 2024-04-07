@@ -573,64 +573,20 @@ class WeatherForecastDataETLHelper:
     def run_etl_from_api(self, start_date: datetime.datetime, latitudes: list[float],
                          longitudes: list[float], latlong_delta: float,
                          min_date_resolution: datetime.timedelta) -> None:
-        # TODO: Merge extract functions for all APIs into one. Do same for transform.
-        self.transform_from_ngofs2_api(
-            dataset_proxy=self.extract_from_ngofs2_api(date=start_date),
+        self.transform_from_ofs_api(
+            dataset_proxies=self.extract_from_ofs_api(date=start_date),
             latitudes=latitudes,
             longitudes=longitudes,
             latlong_delta=latlong_delta,
-            min_date_resolution=min_date_resolution,
-            append_dataframe=True)
-        self.transform_from_tbofs_api(
-            dataset_proxy=self.extract_from_tbofs_api(date=start_date),
-            latitudes=latitudes,
-            longitudes=longitudes,
-            latlong_delta=latlong_delta,
-            min_date_resolution=min_date_resolution,
-            append_dataframe=True)
+            min_date_resolution=min_date_resolution)
         self.load_to_database()
 
-    def extract_from_ngofs2_api(self, date: datetime.datetime):
-        '''Extracts weather data from NOAA NGOFS2 forecast dataset API.
-        Returns DAP2 dataset proxy.
-        
-        Parameters:
-        date: Nearest date to extract forecasted data from.'''
-        # Extract NOAA NGOFS2 forecast dataset from THREDDS server
-        # using DAP2 protocol. DAP endpoint URL format is the
-        # following:
-        # <base_url>/<year>/<month>/<day>/<base_filename>.<year><month><day>.t<cycle>z.nc
-        #
-        # This dataset includes forecasts for the Northern Gulf of
-        # Mexico.
-        #
-        # The forecast is performed every 6 hours each day, each
-        # being 2-days long. Cycles are labeled as 3, 9, 15, or 21. It
-        # is assumed that each is at the center of a 6-hour interval.
-        #
-        # Example URL: https://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/NGOFS2/MODELS/2024/03/23/nos.ngofs2.stations.forecast.20240323.t15z.nc
-        log = self._GetLogger('Extracting weather forecast data from API')
+    def extract_from_ofs_api(self, date: datetime.datetime) -> dict:
+        '''Extracts weather data from NOAA OFS forecast dataset APIs.
+        Returns dictionary of DAP2 dataset proxies with the dataset
+        names as keys. Supported datasets are NGOFS2, TBOFS, and
+        SJROFS.
 
-        # Calculate cycle
-        file_date = datetime.datetime(year=date.year,
-                                      month=date.month,
-                                      day=date.day,
-                                      hour=(3 + 6 * (date.hour // 6))) # TODO fix hours being ahead
-
-        # Reattempt data request for previous cycles until 2 days. Beyond two days,
-        # no future values would be present since the forecast period is for 2 days.
-        while date - file_date <= datetime.timedelta(days=2.0):
-            try:
-                # Request dataset proxy from API. Accesses to this proxy will download the data.
-                return pydapclient.open_url(url=f'https://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/NGOFS2/MODELS/{file_date.year:04}/{file_date.month:02}/{file_date.day:02}/nos.ngofs2.stations.forecast.{file_date.year:04}{file_date.month:02}{file_date.day:02}.t{file_date.hour:02}z.nc')
-            except Exception:
-                # Try again for previous cycle
-                file_date -= datetime.timedelta(hours=6.0)
-
-    def extract_from_tbofs_api(self, date: datetime.datetime):
-        '''Extracts weather data from NOAA TBOFS forecast dataset API.
-        Returns DAP2 dataset proxy.
-        
         Parameters:
         date: Nearest date to extract forecasted data from.'''
         # Extract NOAA TBOFS forecast dataset from THREDDS server
@@ -647,37 +603,56 @@ class WeatherForecastDataETLHelper:
         # Example URL: https://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/TBOFS/MODELS/2024/04/04/nos.tbofs.stations.forecast.20240404.t00z.nc
         log = self._GetLogger('Extracting weather forecast data from API')
 
-        # Calculate cycle
-        file_date = datetime.datetime(year=date.year,
-                                      month=date.month,
-                                      day=date.day,
-                                      hour=6 * (date.hour // 6))
+        # Dataset DAP proxies by dataset
+        dataset_proxies = {'NGOFS2': None,
+                           'TBOFS': None,
+                           'SJROFS': None}
 
-        # Reattempt data request for previous cycles until 2 days. Beyond two days,
-        # no future values would be present since the forecast period is for 2 days.
-        while date - file_date <= datetime.timedelta(days=2.0):
-            try:
-                # Request dataset proxy from API. Accesses to this proxy will download the data.
-                return pydapclient.open_url(url=f'https://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/TBOFS/MODELS/{file_date.year:04}/{file_date.month:02}/{file_date.day:02}/nos.tbofs.stations.forecast.{file_date.year:04}{file_date.month:02}{file_date.day:02}.t{file_date.hour:02}z.nc')
-            except Exception:
-                # Try again for previous cycle
-                file_date -= datetime.timedelta(hours=6.0)
+        for dataset_name in dataset_proxies.keys():
+            # Calculate cycle. Cycles are labeled as the following for each dataset:
+            #   NGOFS2: 3, 9, 15, 21
+            #   TBOFS: 0, 6, 12, 18
+            #   SJROFS: 5, 11, 17, 23
+            if dataset_name == 'NGOFS2':
+                cycle_hour = 3 + 6 * (date.hour // 6)
+            elif dataset_name == 'TBOFS':
+                cycle_hour = 6 * (date.hour // 6)
+            elif dataset_name == 'SJROFS':
+                cycle_hour = 5 + 6 * (date.hour // 6)
 
-    def transform_from_ngofs2_api(self, dataset_proxy, latitudes: list[float], longitudes: list[float],
-                                  latlong_delta: float, min_date_resolution: datetime.timedelta, append_dataframe: bool=False) -> None:
-        '''Transforms data extracted from NOAA NGOFS2 forecast dataset
-        and stores it into internal dataframe.
+            file_date = datetime.datetime(year=date.year,
+                                        month=date.month,
+                                        day=date.day,
+                                        hour=cycle_hour)
+
+            # Reattempt data request for previous cycles until 2 days. Beyond two days,
+            # no future values would be present since the forecast period is for 2 days.
+            while date - file_date <= datetime.timedelta(days=2.0):
+                try:
+                    # Request dataset proxy from API. Accesses to this proxy will download the data.
+                    dataset_proxies[dataset_name] = pydapclient.open_url(url=f'https://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/{dataset_name}/MODELS/{file_date.year:04}/{file_date.month:02}/{file_date.day:02}/nos.{dataset_name.lower()}.stations.forecast.{file_date.year:04}{file_date.month:02}{file_date.day:02}.t{file_date.hour:02}z.nc')
+                    break
+                except Exception:
+                    # Try again for previous cycle
+                    file_date -= datetime.timedelta(hours=6.0)
+
+        return dataset_proxies
+
+    def transform_from_ofs_api(self, dataset_proxies: dict, latitudes: list[float], longitudes: list[float],
+                                  latlong_delta: float, min_date_resolution: datetime.timedelta) -> None:
+        '''Transforms data extracted from NOAA OFS forecast datasetS
+        and stores it into internal dataframe. Supported datasets are
+        NGOFS2, TBOFS, and SJROFS.
 
         Parameters:
-        dataset_proxy: DAP2 proxy for weather forecast dataset.
+        dataset_proxies: DAP2 proxies for weather forecast datasets.
+        Keys are dataset names (NGOFS2, TBOFS, SJROFS).
         latitudes: Latitudes in [-180, 180) degrees.
         longitudes: Longitudes in [-180, 180) degrees.
         latlong_delta: Maximum difference between HAB and weather
         forecast data latitude and longitude.
         min_date_resolution: Minimum time resolution for weather
-        forecast data. Default is 4 hours.
-        append_dataframe: Whether to append to internal dataframe or
-        overwrite it. Default is False.'''
+        forecast data. Default is 4 hours.'''
         log = self._GetLogger('Transforming weather forecast data from API')
 
         transformed_data = {'DATETIME': [],
@@ -688,192 +663,129 @@ class WeatherForecastDataETLHelper:
                             'WIND_SPEED': [],
                             'WIND_DIR': []}
 
-        # Download data. Data structure:
-        #   [station_index] for location data.
-        #   [time_index] for time data.
-        #   [time_index][sigma_layer][station_index] for water
-        #   temperature and salinity. Take data from first sigma
-        #   layer.
-        #   [time_index][station_index] for wind velocities
-        lat_data = dataset_proxy['lat'][:].data
-        lon_data = dataset_proxy['lon'][:].data
-        time_data = dataset_proxy['time'][:].data
-        salinity_data = dataset_proxy['salinity'][:].data
-        water_temp_data = dataset_proxy['temp'][:].data
-        eastward_wind_velocity_data = dataset_proxy['uwind_speed'][:].data
-        northward_wind_velocity_data = dataset_proxy['vwind_speed'][:].data
+        for dataset_name in dataset_proxies.keys():
+            # Download data
+            if dataset_name == 'NGOFS2':
+                # NGOFS2 data structure:
+                #   [station_index] for location data.
+                #   [time_index] for time data.
+                #   [time_index][sigma_layer][station_index] for water
+                #   temperature and salinity. Take data from first sigma
+                #   layer.
+                #   [time_index][station_index] for wind velocities
+                lat_data = dataset_proxies[dataset_name]['lat'][:].data
+                lon_data = dataset_proxies[dataset_name]['lon'][:].data
+                time_data = dataset_proxies[dataset_name]['time'][:].data
+                salinity_data = dataset_proxies[dataset_name]['salinity'][:].data
+                water_temp_data = dataset_proxies[dataset_name]['temp'][:].data
+                eastward_wind_velocity_data = dataset_proxies[dataset_name]['uwind_speed'][:].data
+                northward_wind_velocity_data = dataset_proxies[dataset_name]['vwind_speed'][:].data
+            elif dataset_name == 'TBOFS':
+                # TBOFS data structure:
+                #   [station_index] for location data.
+                #   [time_index] for time data.
+                #   [time_index][station_index][sigma_rho] for water
+                #   temperature and salinity. Take data from first sigma
+                #   rho.
+                #   [time_index][station_index] for wind velocities
+                lat_data = dataset_proxies[dataset_name]['lat_rho'][:].data
+                lon_data = dataset_proxies[dataset_name]['lon_rho'][:].data
+                time_data = dataset_proxies[dataset_name]['ocean_time'][:].data
+                salinity_data = dataset_proxies[dataset_name]['salt'][:].data  # TODO: Determine unit for this
+                water_temp_data = dataset_proxies[dataset_name]['temp'][:].data
+                eastward_wind_velocity_data = dataset_proxies[dataset_name]['Uwind'][:].data
+                northward_wind_velocity_data = dataset_proxies[dataset_name]['Vwind'][:].data
+            elif dataset_name == 'SJROFS':
+                # SJROFS data structure:
+                #   [station_index] for location data.
+                #   [time_index] for time data.
+                #   [time_index][sigma_layer][station_index] for water
+                #   temperature and salinity. Take data from first sigma
+                #   rho.
+                #   [time_index][station_index] for wind velocities
+                lat_data = dataset_proxies[dataset_name]['lat'][:].data
+                lon_data = dataset_proxies[dataset_name]['lon'][:].data
+                time_data = dataset_proxies[dataset_name]['time'][:].data
+                salinity_data = dataset_proxies[dataset_name]['salt'][:].data
+                water_temp_data = dataset_proxies[dataset_name]['temp'][:].data
+                eastward_wind_velocity_data = dataset_proxies[dataset_name]['air_u'][:].data
+                northward_wind_velocity_data = dataset_proxies[dataset_name]['air_v'][:].data
 
-        for location_index in range(len(latitudes)):
-            # Convert [0, 360) degrees to [0, 2*pi) radian
-            latitude_radian = 2 * np.pi * latitudes[location_index] / 360.0
-            longitude_radian = 2 * np.pi * longitudes[location_index] / 360.0
+            for location_index in range(len(latitudes)):
+                # Convert [0, 360) degrees to [0, 2*pi) radian
+                latitude_radian = 2 * np.pi * latitudes[location_index] / 360.0
+                longitude_radian = 2 * np.pi * longitudes[location_index] / 360.0
 
-            # Find closest station within delta
-            closest_station_index = None
-            min_distance = None
+                # Find closest station within delta
+                closest_station_index = None
+                min_distance = None
 
-            for station_index in range(len(lat_data)):
-                # Only consider locations within delta. Convert station latitude and longitude
-                # from [0, 360) degrees to [-180, 180) degrees for equal formats.
-                if (abs(latitudes[location_index] - (lat_data[station_index] if lat_data[station_index] < 180.0 else lat_data[station_index] - 360.0)) <= latlong_delta
-                    and abs(longitudes[location_index] - (lon_data[station_index] if lon_data[station_index] < 180.0 else lon_data[station_index] - 360.0)) <= latlong_delta):
-                    # Convert [0, 360) degrees to [0, 2*pi) radian
-                    station_latitude_radian = 2 * np.pi * lat_data[station_index] / 360.0
-                    station_longitude_radian = 2 * np.pi * lon_data[station_index] / 360.0
+                for station_index in range(len(lat_data)):
+                    # Only consider locations within delta. Convert station latitude and longitude
+                    # from [0, 360) degrees to [-180, 180) degrees for equal formats.
+                    if (abs(latitudes[location_index] - (lat_data[station_index] if lat_data[station_index] < 180.0 else lat_data[station_index] - 360.0)) <= latlong_delta
+                        and abs(longitudes[location_index] - (lon_data[station_index] if lon_data[station_index] < 180.0 else lon_data[station_index] - 360.0)) <= latlong_delta):
+                        # Convert [0, 360) degrees to [0, 2*pi) radian
+                        station_latitude_radian = 2 * np.pi * lat_data[station_index] / 360.0
+                        station_longitude_radian = 2 * np.pi * lon_data[station_index] / 360.0
 
-                    # Calculate distance between lat-long points using
-                    # haversine formula for a cental angle
-                    distance = (12742 * np.arcsin(np.sqrt((np.sin(station_latitude_radian - latitude_radian) ** 2)) / 2.0
-                                + np.cos(latitude_radian) * np.cos(station_latitude_radian) * np.sin((station_longitude_radian - longitude_radian) / 2.0) ** 2.0))
+                        # Calculate distance between lat-long points using
+                        # haversine formula for a cental angle
+                        distance = (12742 * np.arcsin(np.sqrt((np.sin(station_latitude_radian - latitude_radian) ** 2)) / 2.0
+                                    + np.cos(latitude_radian) * np.cos(station_latitude_radian) * np.sin((station_longitude_radian - longitude_radian) / 2.0) ** 2.0))
 
-                    if min_distance is None or distance < min_distance:
-                        closest_station_index = station_index
-                        min_distance = distance
+                        if min_distance is None or distance < min_distance:
+                            closest_station_index = station_index
+                            min_distance = distance
 
-            # Transform data if a station within delta is found
-            if closest_station_index is not None:
-                last_datetime = None
+                # Transform data if a station within delta is found
+                if closest_station_index is not None:
+                    last_datetime = None
 
-                for time_index in range(len(time_data)):
-                    # Convert date from days since 2019-01-01 00:00:00
-                    converted_time = datetime.datetime(year=2019, month=1, day=1) + datetime.timedelta(days=float(time_data[time_index]))
+                    for time_index in range(len(time_data)):
+                        if dataset_name == 'NGOFS2':
+                            # Convert date from days since 2019-01-01 00:00:00
+                            converted_time = datetime.datetime(year=2019, month=1, day=1) + datetime.timedelta(days=float(time_data[time_index]))
+                        elif dataset_name == 'TBOFS':
+                            # Convert date from seconds since 2009-01-01 00:00:00
+                            converted_time = datetime.datetime(year=2009, month=1, day=1) + datetime.timedelta(seconds=float(time_data[time_index]))
+                        elif dataset_name == 'SJROFS':
+                            # Convert date from days since 2016-01-01 00:00:00
+                            converted_time = datetime.datetime(year=2016, month=1, day=1) + datetime.timedelta(days=float(time_data[time_index]))
 
-                    # Only insert data for a given time resolution. Assumes that data from API is in ascending time order.
-                    if last_datetime is None or converted_time - last_datetime >= min_date_resolution:
-                        last_datetime = converted_time
-                        transformed_data['DATETIME'].append(converted_time)
+                        # Only insert data for a given time resolution. Assumes that data from API is in ascending time order.
+                        if last_datetime is None or converted_time - last_datetime >= min_date_resolution:
+                            last_datetime = converted_time
+                            transformed_data['DATETIME'].append(converted_time)
 
-                        # Convert latitude and longitude from [0, 360) degrees to [-180, 180) degrees
-                        transformed_data['LATITUDE'].append(latitudes[location_index] if latitudes[location_index] < 180.0 else latitudes[location_index] - 360.0)
-                        transformed_data['LONGITUDE'].append(longitudes[location_index] if longitudes[location_index] < 180.0 else longitudes[location_index] - 360.0)
+                            # Convert latitude and longitude from [0, 360) degrees to [-180, 180) degrees
+                            transformed_data['LATITUDE'].append(latitudes[location_index] if latitudes[location_index] < 180.0 else latitudes[location_index] - 360.0)
+                            transformed_data['LONGITUDE'].append(longitudes[location_index] if longitudes[location_index] < 180.0 else longitudes[location_index] - 360.0)
 
-                        # Water temperature is in Centigrade and salinity is in ppt. Use first sigma layer.
-                        transformed_data['WATER_TEMP'].append(water_temp_data[time_index][0][closest_station_index])
-                        transformed_data['SALINITY'].append(salinity_data[time_index][0][closest_station_index])
+                            # Water temperature is in Centigrade and salinity is in ppt
+                            if dataset_name == 'NGOFS2' or dataset_name == 'SJROFS':
+                                # Use first sigma layer
+                                transformed_data['WATER_TEMP'].append(water_temp_data[time_index][0][closest_station_index])
+                                transformed_data['SALINITY'].append(salinity_data[time_index][0][closest_station_index])
+                            elif dataset_name == 'TBOFS':
+                                # Use first sigma rho
+                                transformed_data['WATER_TEMP'].append(water_temp_data[time_index][closest_station_index][0])
+                                transformed_data['SALINITY'].append(salinity_data[time_index][closest_station_index][0])
 
-                        # Convert eastward and northward wind speeds in m/s to wind speed in mph and direction in degrees
-                        transformed_data['WIND_SPEED'].append(np.sqrt(eastward_wind_velocity_data[time_index][closest_station_index] ** 2 + northward_wind_velocity_data[time_index][closest_station_index] ** 2) / 1609.344 * 3600.0)
-                        try:
-                            # Convert [-180, 180) degrees to [0, 360) degrees
-                            transformed_data['WIND_DIR'].append(np.arctan(northward_wind_velocity_data[time_index][closest_station_index] / eastward_wind_velocity_data[time_index][closest_station_index]) / (2.0 * np.pi) * 360.0)
+                            # Convert eastward and northward wind speeds in m/s to wind speed in mph and direction in degrees
+                            transformed_data['WIND_SPEED'].append(np.sqrt(eastward_wind_velocity_data[time_index][closest_station_index] ** 2 + northward_wind_velocity_data[time_index][closest_station_index] ** 2) / 1609.344 * 3600.0)
+                            try:
+                                # Convert [-180, 180) degrees to [0, 360) degrees
+                                transformed_data['WIND_DIR'].append(np.arctan(northward_wind_velocity_data[time_index][closest_station_index] / eastward_wind_velocity_data[time_index][closest_station_index]) / (2.0 * np.pi) * 360.0)
 
-                            if transformed_data['WIND_DIR'][-1] < 0.0:
-                                transformed_data['WIND_DIR'][-1] += 360.0
-                        except ZeroDivisionError:
-                            # Handle case of 0 eastward wind speed (90 or 270 degrees)
-                            transformed_data['WIND_DIR'].append(90.0 if northward_wind_velocity_data[time_index][closest_station_index] >= 0.0 else 270.0)
+                                if transformed_data['WIND_DIR'][-1] < 0.0:
+                                    transformed_data['WIND_DIR'][-1] += 360.0
+                            except ZeroDivisionError:
+                                # Handle case of 0 eastward wind speed (90 or 270 degrees)
+                                transformed_data['WIND_DIR'].append(90.0 if northward_wind_velocity_data[time_index][closest_station_index] >= 0.0 else 270.0)
 
-        # Overwrite internal dataframe if it is unitialized or if not appending
-        if self._df is None or not append_dataframe:
-            self._df = pd.DataFrame(transformed_data)
-        else:
-            self._df = pd.concat([self._df, pd.DataFrame(transformed_data)])
-
-    def transform_from_tbofs_api(self, dataset_proxy, latitudes: list[float], longitudes: list[float],
-                                  latlong_delta: float, min_date_resolution: datetime.timedelta, append_dataframe: bool=False) -> None:
-        '''Transforms data extracted from NOAA TBOFS forecast dataset
-        and stores it into internal dataframe.
-
-        Parameters:
-        dataset_proxy: DAP2 proxy for weather forecast dataset.
-        latitudes: Latitudes in [-180, 180) degrees.
-        longitudes: Longitudes in [-180, 180) degrees.
-        latlong_delta: Maximum difference between HAB and weather
-        forecast data latitude and longitude.
-        min_date_resolution: Minimum time resolution for weather
-        forecast data. Default is 4 hours.
-        append_dataframe: Whether to append to internal dataframe or
-        overwrite it. Default is False.'''
-        log = self._GetLogger('Transforming weather forecast data from API')
-
-        transformed_data = {'DATETIME': [],
-                            'LATITUDE': [],
-                            'LONGITUDE': [],
-                            'WATER_TEMP': [],
-                            'SALINITY': [],
-                            'WIND_SPEED': [],
-                            'WIND_DIR': []}
-
-        # Download data. Data structure:
-        #   [station_index] for location data.
-        #   [time_index] for time data.
-        #   [time_index][station_index][sigma_rho] for water
-        #   temperature and salinity. Take data from first sigma
-        #   rho.
-        #   [time_index][station_index] for wind velocities
-        lat_data = dataset_proxy['lat_rho'][:].data
-        lon_data = dataset_proxy['lon_rho'][:].data
-        time_data = dataset_proxy['ocean_time'][:].data
-        salinity_data = dataset_proxy['salt'][:].data  # TODO: Determine unit for this
-        water_temp_data = dataset_proxy['temp'][:].data
-        eastward_wind_velocity_data = dataset_proxy['Uwind'][:].data
-        northward_wind_velocity_data = dataset_proxy['Vwind'][:].data
-
-        for location_index in range(len(latitudes)):
-            # Convert [0, 360) degrees to [0, 2*pi) radian
-            latitude_radian = 2 * np.pi * latitudes[location_index] / 360.0
-            longitude_radian = 2 * np.pi * longitudes[location_index] / 360.0
-
-            # Find closest station within delta
-            closest_station_index = None
-            min_distance = None
-
-            for station_index in range(len(lat_data)):
-                # Only consider locations within delta. Convert station latitude and longitude
-                # from [0, 360) degrees to [-180, 180) degrees for equal formats.
-                if (abs(latitudes[location_index] - (lat_data[station_index] if lat_data[station_index] < 180.0 else lat_data[station_index] - 360.0)) <= latlong_delta
-                    and abs(longitudes[location_index] - (lon_data[station_index] if lon_data[station_index] < 180.0 else lon_data[station_index] - 360.0)) <= latlong_delta):
-                    # Convert [0, 360) degrees to [0, 2*pi) radian
-                    station_latitude_radian = 2 * np.pi * lat_data[station_index] / 360.0
-                    station_longitude_radian = 2 * np.pi * lon_data[station_index] / 360.0
-
-                    # Calculate distance between lat-long points using
-                    # haversine formula for a cental angle
-                    distance = (12742 * np.arcsin(np.sqrt((np.sin(station_latitude_radian - latitude_radian) ** 2)) / 2.0
-                                + np.cos(latitude_radian) * np.cos(station_latitude_radian) * np.sin((station_longitude_radian - longitude_radian) / 2.0) ** 2.0))
-
-                    if min_distance is None or distance < min_distance:
-                        closest_station_index = station_index
-                        min_distance = distance
-
-            # Transform data if a station within delta is found
-            if closest_station_index is not None:
-                last_datetime = None
-
-                for time_index in range(len(time_data)):
-                    # Convert date from seconds since 2009-01-01 00:00:00
-                    converted_time = datetime.datetime(year=2009, month=1, day=1) + datetime.timedelta(seconds=float(time_data[time_index]))
-
-                    # Only insert data for a given time resolution. Assumes that data from API is in ascending time order.
-                    if last_datetime is None or converted_time - last_datetime >= min_date_resolution:
-                        last_datetime = converted_time
-                        transformed_data['DATETIME'].append(converted_time)
-
-                        # Get latitude and longitude in [-180, 180) degrees
-                        transformed_data['LATITUDE'].append(latitudes[location_index])
-                        transformed_data['LONGITUDE'].append(longitudes[location_index])
-
-                        # Water temperature is in Centigrade and salinity is in ppt. Use first sigma rho.
-                        transformed_data['WATER_TEMP'].append(water_temp_data[time_index][closest_station_index][0])
-                        transformed_data['SALINITY'].append(salinity_data[time_index][closest_station_index][0])
-
-                        # Convert eastward and northward wind speeds in m/s to wind speed in mph and direction in degrees
-                        transformed_data['WIND_SPEED'].append(np.sqrt(eastward_wind_velocity_data[time_index][closest_station_index] ** 2 + northward_wind_velocity_data[time_index][closest_station_index] ** 2) / 1609.344 * 3600.0)
-                        try:
-                            # Convert [-180, 180) degrees to [0, 360) degrees
-                            transformed_data['WIND_DIR'].append(np.arctan(northward_wind_velocity_data[time_index][closest_station_index] / eastward_wind_velocity_data[time_index][closest_station_index]) / (2.0 * np.pi) * 360.0)
-
-                            if transformed_data['WIND_DIR'][-1] < 0.0:
-                                transformed_data['WIND_DIR'][-1] += 360.0
-                        except ZeroDivisionError:
-                            # Handle case of 0 eastward wind speed (90 or 270 degrees)
-                            transformed_data['WIND_DIR'].append(90.0 if northward_wind_velocity_data[time_index][closest_station_index] >= 0.0 else 270.0)
-
-        # Overwrite internal dataframe if it is unitialized or if not appending
-        if self._df is None or not append_dataframe:
-            self._df = pd.DataFrame(transformed_data)
-        else:
-            self._df = pd.concat([self._df, pd.DataFrame(transformed_data)], ignore_index=True)
+        # Assign to internal dataframe
+        self._df = pd.DataFrame(transformed_data)
 
     def load_to_database(self) -> None:
         '''Loads dataframe to MySQL database.'''
