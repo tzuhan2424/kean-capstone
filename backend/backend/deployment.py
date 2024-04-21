@@ -38,4 +38,4 @@ DATABASES = {
 }
 
 
-# STATIC_ROOT = BASE_DIR / ''
+STATIC_ROOT = BASE_DIR/'staticfiles'
