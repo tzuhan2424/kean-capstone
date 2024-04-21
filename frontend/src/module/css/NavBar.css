@@ -1,0 +1,10 @@
+#navbar-container {
+    background-color: #d1e0e3; /* Blue background */
+    width: 300px; /* Sidebar width */
+    height: 100%;
+    position: fixed;
+    left: 0;
+    /* top: 0; */
+    overflow-y: auto; /* Allows scrolling of the sidebar */
+    padding-top: 60px; /* Give some space on top */
+}

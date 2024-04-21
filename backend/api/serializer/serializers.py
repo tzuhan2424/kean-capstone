@@ -1,12 +1,21 @@
 from rest_framework import serializers
-from ..models import Test, Sport
+from ..models import HabsosT, HabsosJ, HabsosPrediction, ForecastJ
 
-class TestSerializer(serializers.ModelSerializer):
+class HabsosTSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Test
-        fields = ['name']
+        model = HabsosT
+        fields = '__all__'
 
-class SportSerializer(serializers.ModelSerializer):
+class HabsosJSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Sport
-        fields = ['name']
+        model = HabsosJ
+        fields = '__all__'
+
+class HabsosPredictionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HabsosPrediction
+        fields = '__all__'
+class ForecastJSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ForecastJ
+        fields = '__all__'

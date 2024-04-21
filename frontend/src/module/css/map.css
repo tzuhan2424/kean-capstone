@@ -1,0 +1,11 @@
+#map-app-content{
+    background-color: #c1b0fae0; /* Blue background */
+    width: 100%; 
+    height: 100%;
+    /* position: fixed;
+    right: 0; */
+    /* top: 0; */
+    overflow-y: auto; 
+    padding-top: 60px; 
+    padding-left: 300px;
+}

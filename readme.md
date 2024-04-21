@@ -26,3 +26,19 @@ npm install
 npm start
 ```
 
+
+## Frontend ENV
+create a .env file at backend/
+<br>
+DB_NAME = XXX
+DB_USER = XXX
+DB_PASSWORD = XXXXX
+HOST = XXXX
+
+
+
+## Backend ENV
+create a .env.local file at frontend/
+<br>
+REACT_APP_ARCGIS_API_KEY="XXXXX"
+

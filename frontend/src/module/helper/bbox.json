@@ -1,0 +1,19 @@
+[
+    { "name": "Area 1", "coordinates": [-96.45, 25.75, -97.73, 27.8] },
+    { "name": "Area 2", "coordinates": [-97.73, 27.8, -95.04, 28.85] },
+    { "name": "Area 3", "coordinates": [-95.22, 29.85, -91.57, 28.58] },
+    { "name": "Area 4", "coordinates": [-91.57, 30.34, -89.24, 28.92] },
+    { "name": "Area 5", "coordinates": [-89.24, 30.64, -87, 28.92] },
+    { "name": "Area 6", "coordinates": [-87.48, 30.64, -84.88, 29.41] },
+    { "name": "Area 7", "coordinates": [-84.95, 30.18, -83.10, 29.01] },
+    { "name": "Area 8", "coordinates": [-83.61, 29.21, -82.55, 27.95] },
+    { "name": "Area 9", "coordinates": [-83.48, 27.95, -82.11, 26.8] },
+    { "name": "Area 10", "coordinates": [-83.34, 26.8, -81.52, 25.89] },
+    { "name": "Area 11", "coordinates": [-83.01, 25.89, -79.41, 24.68] },
+    { "name": "Area 12", "coordinates": [-81.92, 30.83, -80.62, 29.31] },
+    { "name": "Area 13", "coordinates": [-81.04, 29.31, -80.07, 27.53] },
+    { "name": "Area 14", "coordinates": [-80.25, 27.53, -79.41, 25.89] },
+    { "name": "All", "coordinates": "all" }
+
+  ]
+  
