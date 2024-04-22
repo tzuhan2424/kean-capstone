@@ -185,6 +185,13 @@ const MainApp2 = () =>{
         onPredict={handlePredict}
         setCondition={setCondition}
         handleDrawerClose={handleDrawerClose} />
+      <div id ='fetch-loading-box'> 
+          {isLoading ? (
+            <div style={{ color: 'red' }}>Loading... Please wait...</div>
+          ) : (
+            <div>Fetched {recordCount} records.</div>
+          )} 
+      </div> 
       <MainContent 
         points={results} 
         area={selectedArea} 

@@ -8,7 +8,7 @@ const drawerWidth = 300;
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
   ({ theme, open }) => ({
     flexGrow: 1,
-    padding: theme.spacing(3),
+    padding: 0, // Set padding to 0 to remove it
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
@@ -31,7 +31,7 @@ export default function MainContent({ open, points,area, isPredict  }) {
 
   return (
     <Main open={open}>
-      <div style={{ ...theme.mixins.toolbar }} />
+      <div style={{ ...theme.mixins.toolbar}} />
       <MapComponent 
           points={points} 
           area={area} 
