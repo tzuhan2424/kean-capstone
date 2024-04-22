@@ -13,11 +13,23 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
-load_dotenv()
+
+# Get MySQL connection details from enviroment. Default to .env file (local testing),
+# else get from web server enviroment connection string (deployment).
+if load_dotenv():
+    CON_STR = {
+        'DB_NAME': os.getenv('DB_NAME'),
+        'DB_USER': os.getenv('DB_USER'),
+        'DB_PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('HOST')
+    }
+else:
+    CONNECTION = os.environ['AZURE_CONNECTIONSTRING']
+    CON_STR = {pair.split('=')[0]:pair.split('=')[1] for pair in CONNECTION.split(' ')}
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -57,12 +69,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 
 ]
-# CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-
-]
-
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -95,10 +102,10 @@ DATABASES = {
     # }
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DB_NAME'),  # Use your database name here
-        'USER': os.getenv('DB_USER'),  # Your MySQL username
-        'PASSWORD': os.getenv('DB_PASSWORD'),  # Your MySQL user password
-        'HOST': os.getenv('HOST'),  # Your database host
+        'NAME': CON_STR['DB_NAME'],  # Use your database name here
+        'USER': CON_STR['DB_USER'],  # Your MySQL username
+        'PASSWORD': CON_STR['DB_PASSWORD'],  # Your MySQL user password
+        'HOST': CON_STR['HOST'],  # Your database host
         'PORT': '3306',  # Default MySQL port
     }
 }
