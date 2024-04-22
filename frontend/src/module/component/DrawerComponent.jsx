@@ -20,6 +20,8 @@ export default function DrawerComponent({ open, handleDrawerClose, onDateChange,
         '& .MuiDrawer-paper': {
           width: drawerWidth,
           boxSizing: 'border-box',
+          backgroundColor: '#cfe2f3', // or use a custom color like '#ffeeff'
+
         },
       }}
       variant="persistent"

@@ -30,7 +30,7 @@ const MainApp2 = () =>{
 
   // start from here
   const apiUrl = process.env.REACT_APP_API_BASE_URL;
-  console.log(`API base URL is: ${apiUrl}`);  // This will show the current environment's base URL
+//   console.log(`API base URL is: ${apiUrl}`);  // This will show the current environment's base URL
 
   const [results, setResults] = useState([]);
   const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
@@ -185,6 +185,8 @@ const MainApp2 = () =>{
         onPredict={handlePredict}
         setCondition={setCondition}
         handleDrawerClose={handleDrawerClose} />
+
+
       <div id ='fetch-loading-box'> 
           {isLoading ? (
             <div style={{ color: 'red' }}>Loading... Please wait...</div>
@@ -192,6 +194,8 @@ const MainApp2 = () =>{
             <div>Fetched {recordCount} records.</div>
           )} 
       </div> 
+
+
       <MainContent 
         points={results} 
         area={selectedArea} 

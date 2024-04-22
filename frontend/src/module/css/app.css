@@ -1,7 +1,12 @@
+body, body * {
+    font-family: 'Slabo 27px', serif;
+}
+
 body, html, #root{
     margin: 0;
     padding: 0;
     height: 100%;
+    
 }
 
 .major-container {

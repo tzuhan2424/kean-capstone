@@ -5,7 +5,8 @@ import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import MenuIcon from '@mui/icons-material/Menu';
-
+import Box from '@mui/material/Box';
+import '../css/NavBar.css'
 const drawerWidth = 300;
 
 const AppBar = styled(MuiAppBar, {
@@ -27,8 +28,12 @@ const AppBar = styled(MuiAppBar, {
 
 export default function AppBarComponent({ open, handleDrawerOpen }) {
   return (
-    <AppBar position="fixed" open={open}>
-      <Toolbar>
+    <AppBar position="fixed" open={open} >
+      <Toolbar sx={{
+        display: 'flex',      // Ensures flexbox layout
+        alignItems: 'center', // Aligns items vertically at the center
+        justifyContent: 'flex-start' // Adjusts items to start of the toolbar
+      }}>
         <IconButton
           color="inherit"
           aria-label="open drawer"
@@ -38,9 +43,19 @@ export default function AppBarComponent({ open, handleDrawerOpen }) {
         >
           <MenuIcon />
         </IconButton>
-        <Typography variant="h6" noWrap component="div">
-          Kean HABSOS System
-        </Typography>
+
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          flexGrow: 1, // Allows box to take up remaining space
+          ml: 2 // Gives some margin left for spacing after the icon
+          }}>
+          <img src="/assets/KU_Logo.svg.png" alt="Kean University Logo" className="appBarLogo" />
+          <Typography variant="h6" noWrap component="div" className="AppBarHeader">
+            Kean HABSOS System
+          </Typography>
+
+        </Box>
       </Toolbar>
     </AppBar>
   );

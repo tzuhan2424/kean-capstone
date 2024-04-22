@@ -10,7 +10,6 @@ import "./module/css/app.css";
 function App() {
 
   const environment = process.env.REACT_APP_APP_ENV;
-  console.log(environment)
   return (
     <div className = 'major-container'>
       {/* <Header/> */}
