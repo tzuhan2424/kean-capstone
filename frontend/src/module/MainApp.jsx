@@ -10,6 +10,9 @@ import areas from './helper/bbox.json'; // Import the JSON file
 
 
 const MainApp = () => {
+  const apiUrl = process.env.REACT_APP_API_BASE_URL;
+  console.log(`API base URL is: ${apiUrl}`);  // This will show the current environment's base URL
+
   const [results, setResults] = useState([]);
   const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
 
@@ -51,7 +54,7 @@ const MainApp = () => {
     setIsLoading(true); // Start loading
     const genus = 'Karenia';
     const species = 'brevis';
-    axios.post('http://localhost:8000/api/searchHabsosDb', {
+    axios.post(`${apiUrl}/api/searchHabsosDb`, {
       genus,
       species,      
       fromDate,
@@ -73,7 +76,7 @@ const MainApp = () => {
   const FetchDatafromCondition = (searchParams) => {
     setIsLoading(true); // Start loading
     console.log(searchParams);
-    axios.post('http://localhost:8000/api/searchHabsosDbCondition', searchParams)
+    axios.post(`${apiUrl}/api/searchHabsosDbCondition`, searchParams)
     .then(response => {
       setResults(response.data);
       setRecordCount(response.data.length); // Update record count based on response
