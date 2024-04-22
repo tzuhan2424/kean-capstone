@@ -10,7 +10,7 @@ def main():
     settings_module = 'backend.deployment' if 'WEBSITE_HOSTNAME' in os.environ else 'backend.settings'
 
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', settings_module)
-    print("Using settings module:", settings_module)
+    # print("Using settings module:", settings_module)
 
     try:
         from django.core.management import execute_from_command_line

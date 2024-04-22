@@ -9,13 +9,6 @@ function App() {
   console.log(environment)
   return (
     <div className = 'major-container'>
-      <div>
-      {environment === 'production' ? (
-        <p>This is running in Production.</p>
-      ) : (
-        <p>This is running in Development.</p>
-      )}
-    </div>
       <Header/>
       <MainApp/>
       <Footer/>

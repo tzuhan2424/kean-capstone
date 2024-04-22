@@ -116,7 +116,7 @@ const MainApp = () => {
   const PredictBasedOnArea = (selectedArea)=>{
     if (selectedArea) {
       // console.log('selected region', selectedArea.name);
-      const url = 'http://localhost:8000/api/fetchForecastPredict'; // Change to your actual API URL
+      const url = `${apiUrl}/api/fetchForecastPredict`; // Change to your actual API URL
       axios.post(url, selectedArea)
           .then(response => {
               // console.log('Prediction response:', response.data);
