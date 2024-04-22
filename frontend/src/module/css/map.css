@@ -9,3 +9,10 @@
     padding-top: 60px; 
     padding-left: 300px;
 }
+#map-app-content-drawer{
+    background-color: #c1b0fae0; /* Blue background */
+    width: 100%; 
+    height: 100%;
+    overflow-y: auto; 
+}
+

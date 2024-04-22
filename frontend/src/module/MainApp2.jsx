@@ -1,4 +1,11 @@
 import React, {useEffect, useState} from 'react'
+import Box from '@mui/material/Box';
+import CssBaseline from '@mui/material/CssBaseline';
+import AppBarComponent from './component/AppBarComponent';
+import DrawerComponent from './component/DrawerComponent';
+import MainContent from './component/MainContent';
+
+
 import { NavBar } from "./NavBar";
 import MapComponent  from "./MapComponent";
 import "./css/app.css"
@@ -8,8 +15,20 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate, passDateCheck, passDateRangeCheck } from './helper/MainAppHelper';
 import areas from './helper/bbox.json'; // Import the JSON file
 
+const MainApp2 = () =>{
+  const [open, setOpen] = React.useState(false);
 
-const MainApp = () => {
+  const handleDrawerOpen = () => {
+    setOpen(true);
+  };
+
+  const handleDrawerClose = () => {
+    setOpen(false);
+  };
+
+
+
+  // start from here
   const apiUrl = process.env.REACT_APP_API_BASE_URL;
   console.log(`API base URL is: ${apiUrl}`);  // This will show the current environment's base URL
 
@@ -147,35 +166,35 @@ const MainApp = () => {
 
 
 
-  
+
+
+
 
 
   return (
-    <div className='main-app-container'>
-        <NavBar 
-          onDateChange={handleDateChange} 
-          onSubmit={handleSubmit}
-          dates={dates}
-          areas={areas}
-          onAreaChange={handleAreaChange}
-          onPredict={handlePredict}
-          setCondition={setCondition}
-          />
-
-        <div id ='fetch-loading-box'> 
-          {isLoading ? (
-            <div style={{ color: 'red' }}>Loading... Please wait...</div>
-          ) : (
-            <div>Fetched {recordCount} records.</div>
-          )} 
-        </div> 
-
-        <MapComponent 
+    <div className='main-app-container-drawer'>
+      <CssBaseline />
+      <AppBarComponent open={open} handleDrawerOpen={handleDrawerOpen} />
+      <DrawerComponent 
+        open={open} 
+        onDateChange={handleDateChange} 
+        onSubmit={handleSubmit}
+        dates={dates}
+        areas={areas}
+        onAreaChange={handleAreaChange}
+        onPredict={handlePredict}
+        setCondition={setCondition}
+        handleDrawerClose={handleDrawerClose} />
+      <MainContent 
+        points={results} 
+        area={selectedArea} 
+        isPredict={isPredict}
+        open={open} />
+      {/* <MapComponent 
           points={results} 
           area={selectedArea} 
-          isPredict={isPredict}/>
+          isPredict={isPredict}/> */}
     </div>
-  )
+  );
 }
-
-export default MainApp
+export default MainApp2

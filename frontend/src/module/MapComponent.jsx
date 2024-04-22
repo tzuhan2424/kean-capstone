@@ -385,7 +385,7 @@ const MapComponent = ({ points, area, isPredict }) => {
   }, [points, mapView, area]);
 
   return (
-    <div id="map-app-content">
+    <div id="map-app-content-drawer">
       <div id="map-container" style={{ height: '100%', width: '100%' }}></div>
     </div>
   );
