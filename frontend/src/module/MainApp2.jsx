@@ -1,16 +1,13 @@
 import React, {useEffect, useState} from 'react'
-import Box from '@mui/material/Box';
 import CssBaseline from '@mui/material/CssBaseline';
 import AppBarComponent from './component/AppBarComponent';
 import DrawerComponent from './component/DrawerComponent';
 import MainContent from './component/MainContent';
 
 
-import { NavBar } from "./NavBar";
-import MapComponent  from "./MapComponent";
+
 import "./css/app.css"
 import axios from 'axios';
-import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate, passDateCheck, passDateRangeCheck } from './helper/MainAppHelper';
 import areas from './helper/bbox.json'; // Import the JSON file
@@ -201,10 +198,6 @@ const MainApp2 = () =>{
         area={selectedArea} 
         isPredict={isPredict}
         open={open} />
-      {/* <MapComponent 
-          points={results} 
-          area={selectedArea} 
-          isPredict={isPredict}/> */}
     </div>
   );
 }
