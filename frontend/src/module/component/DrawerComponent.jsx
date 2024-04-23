@@ -7,7 +7,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
 import { NavBar } from '../NavBar';
-const drawerWidth = 300;
+import { drawerWidth } from '../config/drawerConfig'; // Update the path accordingly
 
 export default function DrawerComponent({ open, handleDrawerClose, onDateChange, onSubmit, dates, areas, onAreaChange, onPredict, setCondition }) {
   const theme = useTheme();

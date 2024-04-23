@@ -45,3 +45,24 @@ div.AppBarHeader{
     width: auto;   /* Maintain aspect ratio */
     margin-right: 20px; /* Space between the logo and the next element */
   }
+.SearchTab-container{
+    font-size: 1.2rem;
+    margin: 25px 5px;
+}
+.SearchTab-container .Intersity-container{
+    margin: 25px 5px 5px 5px;
+}
+.date-range-picker-input{
+    font-size: 1.2rem;
+}
+#date-range-picker-title{
+    font-weight:900
+}
+#intensity-picker-title{
+    font-weight:900
+}
+
+.custom-select-dropdown{
+    max-width: 100%; 
+    font-size: 1.2rem;
+}

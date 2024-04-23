@@ -7,7 +7,8 @@ import Typography from '@mui/material/Typography';
 import MenuIcon from '@mui/icons-material/Menu';
 import Box from '@mui/material/Box';
 import '../css/NavBar.css'
-const drawerWidth = 300;
+import { drawerWidth } from '../config/drawerConfig'; // Update the path accordingly
+
 
 const AppBar = styled(MuiAppBar, {
   shouldForwardProp: (prop) => prop !== 'open',
@@ -32,7 +33,8 @@ export default function AppBarComponent({ open, handleDrawerOpen }) {
       <Toolbar sx={{
         display: 'flex',      // Ensures flexbox layout
         alignItems: 'center', // Aligns items vertically at the center
-        justifyContent: 'flex-start' // Adjusts items to start of the toolbar
+        justifyContent: 'flex-start', // Adjusts items to start of the toolbar
+        backgroundColor: '#5B96CB'
       }}>
         <IconButton
           color="inherit"

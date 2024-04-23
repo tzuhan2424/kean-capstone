@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
+import '../css/NavBar.css'
+import '../css/component.css'
+
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate } from '../helper/MainAppHelper';
 import { passDateCheck,passDateRangeCheck } from '../helper/MainAppHelper';
@@ -57,32 +60,44 @@ const SearchTab = ({ onDateChange, onSubmit, dates, setCondition}) => {
 
   return (
     <div>
-      <div className = 'date-range-picker'>
-            <div>From:</div>
-            <DatePicker
-                selected={dates.startDate}
-                onChange={(date) => {
-                    onDateChange({ startDate: date });
-                  }}                
-                selectsStart
-                startDate={dates.startDat}
-                endDate={dates.endDate}
-                dropdownMode="select"
-            />
-            {fromDateValidationError && <div style={{ color: 'red' }}>{fromDateValidationError}</div>}
+      <div>Search historical data from 1955 to present</div>
 
-            <div>To: </div>
-            <DatePicker
-                selected={dates.endDate}
-                onChange={(date) => {
-                    onDateChange({ endDate: date });
-                  }}                 
-                selectsEnd
-                startDate={dates.startDate}
-                endDate={dates.endDate}
-                minDate={dates.startDate}
-                dropdownMode="select"
-            />
+      <div className = 'SearchTab-container'>
+            <div id = "date-range-picker-title">Select Date Range</div>
+            <table colspan='2'>
+              <tr>
+                <td><span>From:</span></td>
+                <td> <DatePicker
+                    className='date-range-picker-input'
+                    selected={dates.startDate}
+                    onChange={(date) => {
+                        onDateChange({ startDate: date });
+                      }}                
+                    selectsStart
+                    startDate={dates.startDat}
+                    endDate={dates.endDate}
+                    dropdownMode="select"
+                /></td>
+              </tr>
+              <tr>
+                <td><span>To: </span></td>
+                <td><DatePicker
+                    className='date-range-picker-input'
+                    selected={dates.endDate}
+                    onChange={(date) => {
+                        onDateChange({ endDate: date });
+                      }}                 
+                    selectsEnd
+                    startDate={dates.startDate}
+                    endDate={dates.endDate}
+                    minDate={dates.startDate}
+                    dropdownMode="select"
+                /></td>
+              </tr>
+            </table>
+
+          
+            {fromDateValidationError && <div style={{ color: 'red' }}>{fromDateValidationError}</div>}
             {endDateValidationError && <div style={{ color: 'red' }}>{endDateValidationError}</div>}
             {DateValidationError && <div style={{ color: 'red' }}>{DateValidationError}</div>}
 
@@ -93,8 +108,12 @@ const SearchTab = ({ onDateChange, onSubmit, dates, setCondition}) => {
 
 
 
-      <button onClick={handleSubmit}>Submit</button>
-
+      {/* <button onClick={handleSubmit}>Submit</button> */}
+      
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <button onClick={handleSubmit} className="button-56" role="button">Submit</button>
+      </div>
+               
       
     </div>
   );

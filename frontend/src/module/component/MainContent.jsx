@@ -3,7 +3,7 @@ import { styled, useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import MapComponent from '../MapComponent';
 
-const drawerWidth = 300;
+import { drawerWidth } from '../config/drawerConfig'; // Update the path accordingly
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
   ({ theme, open }) => ({
