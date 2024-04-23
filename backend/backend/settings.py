@@ -16,6 +16,13 @@ from dotenv import load_dotenv
 
 # Get MySQL connection details from enviroment. Default to .env file (local testing),
 # else get from web server enviroment connection string (deployment).
+CON_STR = {
+    'DB_NAME': '',
+    'DB_USER': '',
+    'DB_PASSWORD': '',
+    'HOST': ''
+}
+
 if load_dotenv():
     CON_STR = {
         'DB_NAME': os.getenv('DB_NAME'),
@@ -23,7 +30,7 @@ if load_dotenv():
         'DB_PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': os.getenv('HOST')
     }
-else:
+elif 'AZURE_CONNECTIONSTRING' in os.environ:
     CONNECTION = os.environ['AZURE_CONNECTIONSTRING']
     CON_STR = {pair.split('=')[0]:pair.split('=')[1] for pair in CONNECTION.split(' ')}
 
