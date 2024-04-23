@@ -66,28 +66,116 @@ const MainApp2 = () =>{
   const handleDateChange = (newDate) => {
     setDates(prevDates => ({ ...prevDates, ...newDate }));
   };
+
+  //dev
+  const sampleData = [
+    {
+      "id": 900809,
+      "state_id": "FL",
+      "description": "Marco Island Beach",
+      "latitude": 25.9441,
+      "longitude": -81.74501,
+      "category": "not observed",
+      "cellcount": 0,
+      "cellcount_qa": 1,
+      "cellcount_unit": "cells/L",
+      "genus": "Karenia",
+      "species": "brevis",
+      "sample_date": "2024-03-24T06:50:00Z",
+      "sample_datetime": "2024-03-24T06:50:00Z",
+      "sample_depth": 0.1,
+      "salinity": null,
+      "salinity_qa": 9,
+      "salinity_unit": null,
+      "water_temp": null,
+      "water_temp_qa": 9,
+      "water_temp_unit": null,
+      "wind_dir": null,
+      "wind_dir_qa": 9,
+      "wind_dir_unit": null,
+      "wind_speed": null,
+      "wind_speed_qa": 9,
+      "wind_speed_unit": null
+    },
+    {
+      "id": 900810,
+      "state_id": "FL",
+      "description": "Marco Island Beach",
+      "latitude": 25.9441,
+      "longitude": -81.74501,
+      "category": "not observed",
+      "cellcount": 10,  // Different cell count value
+      "cellcount_qa": 1,
+      "cellcount_unit": "cells/L",
+      "genus": "Karenia",
+      "species": "brevis",
+      "sample_date": "2024-03-25T07:30:00Z",  // Different sample datetime
+      "sample_datetime": "2024-03-25T07:30:00Z",  // Different sample datetime
+      "sample_depth": 0.1,
+      "salinity": null,
+      "salinity_qa": 9,
+      "salinity_unit": null,
+      "water_temp": null,
+      "water_temp_qa": 9,
+      "water_temp_unit": null,
+      "wind_dir": null,
+      "wind_dir_qa": 9,
+      "wind_dir_unit": null,
+      "wind_speed": null,
+      "wind_speed_qa": 9,
+      "wind_speed_unit": null
+    }
+    // Add other objects here...
+  ];
   const FetchData = (fromDate, toDate) => {
     setIsLoading(true); // Start loading
-    const genus = 'Karenia';
-    const species = 'brevis';
-    axios.post(`${apiUrl}/api/searchHabsosDb`, {
-      genus,
-      species,      
-      fromDate,
-      toDate,
-    })
-    .then(response => {
-      // console.log('fetch');
-      // console.log(response.data);
-      setResults(response.data);
-      setRecordCount(response.data.length); // Update record count based on response
-      setIsLoading(false); // Stop loading
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      setIsLoading(false); // Stop loading in case of error
+  
+    // Filter data based on fromDate and toDate
+    const filteredData = sampleData.filter(item => {
+      const sampleDate = new Date(item.sample_datetime);
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+      return sampleDate >= from && sampleDate <= to;
     });
+  
+    // Simulate a delay to mimic async data fetching
+    setTimeout(() => {
+      setResults(sampleData);
+      setRecordCount(sampleData.length); // Update record count based on filtered data
+      setIsLoading(false); // Stop loading
+    }, 300); // Delay of 1 second
   };
+
+
+
+
+
+
+
+
+
+  // const FetchData = (fromDate, toDate) => {
+  //   setIsLoading(true); // Start loading
+  //   const genus = 'Karenia';
+  //   const species = 'brevis';
+  //   axios.post(`${apiUrl}/api/searchHabsosDb`, {
+  //     genus,
+  //     species,      
+  //     fromDate,
+  //     toDate,
+  //   })
+  //   .then(response => {
+  //     // console.log('fetch');
+  //     // console.log(response.data);
+  //     setResults(response.data);
+  //     setRecordCount(response.data.length); // Update record count based on response
+  //     setIsLoading(false); // Stop loading
+  //   })
+  //   .catch(error => {
+  //     console.error('Error:', error);
+  //     setIsLoading(false); // Stop loading in case of error
+  //   });
+  // };
 
   const FetchDatafromCondition = (searchParams) => {
     setIsLoading(true); // Start loading
