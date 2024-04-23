@@ -44,7 +44,7 @@ const MainApp2 = () =>{
     const area = areas.find(a => a.name === areaName);
     setSelectedArea(area);
   };
-
+  console.log('result', results);
 
 
   const [dates, setDates] = useState({

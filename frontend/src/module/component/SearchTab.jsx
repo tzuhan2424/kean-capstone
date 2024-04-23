@@ -64,7 +64,8 @@ const SearchTab = ({ onDateChange, onSubmit, dates, setCondition}) => {
 
       <div className = 'SearchTab-container'>
             <div id = "date-range-picker-title">Select Date Range</div>
-            <table colspan='2'>
+            <table colSpan='2'>
+              <tbody>
               <tr>
                 <td><span>From:</span></td>
                 <td> <DatePicker
@@ -94,6 +95,7 @@ const SearchTab = ({ onDateChange, onSubmit, dates, setCondition}) => {
                     dropdownMode="select"
                 /></td>
               </tr>
+              </tbody>
             </table>
 
           
