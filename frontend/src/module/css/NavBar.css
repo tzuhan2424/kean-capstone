@@ -82,3 +82,12 @@ div.AppBarHeader{
     font-weight:900;
     font-size:1.2rem;
 }
+.Legend-container{
+    margin: 25px 5px;
+
+
+}
+.Legend-container.legend-title{
+    font-size:1rem;
+    font-weight: 900;
+}

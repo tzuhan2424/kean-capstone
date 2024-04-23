@@ -7,7 +7,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate } from '../helper/MainAppHelper';
 import { passDateCheck,passDateRangeCheck } from '../helper/MainAppHelper';
 import ConditionSelector from './ConditionSelector';
-
+import { Legend } from './Legend';
 const SearchTab = ({ onDateChange, onSubmit, dates, setCondition}) => {
   const [formattedDate, setFormattedDate] = useState({ fromDate: '', toDate: '' });
   const [fromDateValidationError, setFromDateValidationError] = useState(''); 
@@ -113,7 +113,8 @@ const SearchTab = ({ onDateChange, onSubmit, dates, setCondition}) => {
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <button onClick={handleSubmit} className="button-56" role="button">Submit</button>
       </div>
-               
+      
+      <Legend/>       
       
     </div>
   );

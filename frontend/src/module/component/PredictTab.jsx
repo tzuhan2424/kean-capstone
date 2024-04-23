@@ -1,5 +1,6 @@
 import React from 'react'
 import "../css/NavBar.css"
+import { Legend } from './Legend'
 const PredictTab = ({areas, onAreaChange, onPredict}) => {
   return (  
     <div>
@@ -24,6 +25,8 @@ const PredictTab = ({areas, onAreaChange, onPredict}) => {
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <button onClick={onPredict} className="button-56" role="button">Forecast</button>
         </div>
+
+        <Legend/>
     </div>
   )
 }
