@@ -33,7 +33,6 @@ export default function MainContent({ open, points,area, isPredict  }) {
     <Main open={open}>
       {/* <div style={{ ...theme.mixins.toolbar}} /> */}
       <div style={{ minHeight: '64px' }} />
-
       <MapComponent 
           points={points} 
           area={area} 

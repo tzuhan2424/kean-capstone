@@ -1,3 +1,5 @@
+import './css/map.css';
+
 import React, { useEffect, useState } from 'react';
 import Map from '@arcgis/core/Map';
 import MapView from '@arcgis/core/views/MapView';
@@ -9,11 +11,9 @@ import  SimpleLineSymbol  from '@arcgis/core/symbols/SimpleLineSymbol';
 import Color from '@arcgis/core/Color';
 
 import mapConfig from './config/mapConfig';
-import './css/map.css';
 import {drawBoundingBoxes} from "./helper/bbox";
 import bbox from "./helper/bbox.json";
 import categoryMapping from "./config/categoryMapping"
-import './css/map.css'
 
 
 const MapComponent = ({ points, area, isPredict }) => {
@@ -203,22 +203,26 @@ const MapComponent = ({ points, area, isPredict }) => {
         hour12: true
       });
     };
+
+
+    
     let popupContent = `
-    <div class="popup-header">${description}</div>
-    <div style="font-size: 1.2em;">(${latitude.toFixed(5)}, ${longitude.toFixed(5)})</div>
-    <img src="/assets/kb_NotObserved.png" alt="Image Description" style="width:100%;height:auto;">
-    <hr style="margin: 8px 0;">
-    <table class="" style="width: 100%;">
-      <tr><td class='table-desc'>Species</td><td>${otherAttributes.genus} ${otherAttributes.species}</td></tr>
-      <tr><td class='table-desc'>Date Collected</td><td>${formatDate(sample_datetime)}</td></tr>
-      <tr><td class='table-desc'>Category</td><td>${category || 'not observed'}</td></tr>
-      <tr><td class='table-desc'>Sample Depth (m)</td><td>${otherAttributes.sample_depth || 'N/A'}</td></tr>
-      <tr><td class='table-desc'>Cell Count (cells/L)</td><td>${cellcount}</td></tr>
-      <tr><td class='table-desc'>Salinity (ppt)</td><td>${salinity}</td></tr>
-      <tr><td class='table-desc'>Water Temperature (°C)</td><td>${water_temp}</td></tr>
-      <tr><td class='table-desc'>Wind Direction</td><td>${wind_dir}</td></tr>
-      <tr><td class='table-desc'>Wind Speed (miles/h)</td><td>${wind_speed}</td></tr>
-    </table>`;
+      <div class="popup-header">
+        <div class="popup-header-description" style="font-size: 1.2em; font-weight: bold">${description}</div>
+        <div style="font-size: 1.2em; font-weight:bold">(${latitude.toFixed(5)}, ${longitude.toFixed(5)})</div>
+      </div>
+      <hr style="margin: 8px 0;">
+      <table class="popup-body" style="width: 100%;">
+        <tr><td class='table-desc'>Species</td><td>${otherAttributes.genus} ${otherAttributes.species}</td></tr>
+        <tr><td class='table-desc'>Date Collected</td><td>${formatDate(sample_datetime)}</td></tr>
+        <tr><td class='table-desc'>Category</td><td>${category}</td></tr>
+        <tr><td class='table-desc'>Sample Depth (m)</td><td>${otherAttributes.sample_depth || 'N/A'}</td></tr>
+        <tr><td class='table-desc'>Cell Count (cells/L)</td><td>${cellcount || 'Not Available'} </td></tr>
+        <tr><td class='table-desc'>Salinity (ppt)</td><td>${salinity || 'Not Available' }</td></tr>
+        <tr><td class='table-desc'>Water Temperature (°C)</td><td>${water_temp || 'Not Available'}</td></tr>
+        <tr><td class='table-desc'>Wind Direction</td><td>${wind_dir || 'Not Available'}</td></tr>
+        <tr><td class='table-desc'>Wind Speed (miles/h)</td><td>${wind_speed || 'Not Available'}</td></tr>
+      </table>`;
     
 
 
@@ -232,34 +236,10 @@ const MapComponent = ({ points, area, isPredict }) => {
 
       attributes: otherAttributes,
       popupTemplate: {
-        title: `<span style="background-color: #F0F0F0;">HABSOS Data<span>`,
+        title: `<span style="background-color: #F0F0F0;">HABSOS Data<span>    
+        `,
         content: popupContent
       }
-      // popupTemplate: {
-      //   title: "{description}",
-      //   content: [
-      //     {
-      //       type: "text",
-      //       text: "This point represents <b>{description}</b> sampled on {sample_datetime}."
-      //     },
-      //     {
-      //     type: "fields",
-      //     fieldInfos: [
-      //       { fieldName: "longitude", label: "longitude" },
-      //       { fieldName: "latitude", label: "latitude" },
-      //       { fieldName: "genus", label: "genus" },
-      //       { fieldName: "species", label: "species" },
-      //       { fieldName: "category", label: "category"},
-      //       { fieldName: "description", label: "Description" },
-      //       { fieldName: "sample_datetime", label: "Sample Date" },
-      //       { fieldName: "cellcount", label: "Cell Count(cells/L)" },
-      //       { fieldName: "salinity", label: "Salinity (ppt)" },
-      //       { fieldName: "water_temp", label: "Water Temperature (°C)" },
-      //       { fieldName: "wind_dir", label: "Wind Direction" },
-      //       { fieldName: "wind_speed", label: "Wind Speed (miles/h)" }
-      //     ]
-      //   }]
-      // }
     });
 
     mapView.map.findLayerById('graphicsLayer').add(pointGraphic);
@@ -315,7 +295,8 @@ const MapComponent = ({ points, area, isPredict }) => {
     const { longitude, latitude, predictions, avg_category} = locationWithPredictions;
   
     // Construct the HTML content for the popup
-    let popupContent = `<table>
+    let popupContent = `
+    <table class='popup-body'>
       <tr><th>Date</th><th>Predict Category</th><th>Salinity</th><th>Water Temp</th><th>Wind Dir</th><th>Wind Speed</th></tr>`;
     predictions.forEach(pred => {
       popupContent += `<tr>
@@ -338,7 +319,7 @@ const MapComponent = ({ points, area, isPredict }) => {
       symbol: getPredictSymbol(avg_category), // Assuming the first prediction has the symbol
       attributes: locationWithPredictions,
       popupTemplate: {
-        title: "Predictions for {latitude}, {longitude}, {avg_category}",
+        title: "Forecast for {latitude}, {longitude}",
         content: popupContent
       }
     });

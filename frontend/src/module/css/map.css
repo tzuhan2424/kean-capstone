@@ -29,10 +29,22 @@
     font-weight: 900;
 }
 .popup-header{
+  background-color: lightblue;
+}
+.popup-header.popup-header-description{
     font-size: 1.2em;
     font-weight: bold;
     margin-bottom: 5px;
+    border-radius: 8px;
 }
+.popup-body{
+    background-color: #E6F1E1;
+}
+
+/* .esri-feature-content{
+    background-color: #04AA6D;
+} */
+/* border-radius: 8px; Rounded corners */
 
 
 /* Custom Popup Styles */

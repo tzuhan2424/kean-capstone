@@ -44,12 +44,15 @@ const MainApp2 = () =>{
     const area = areas.find(a => a.name === areaName);
     setSelectedArea(area);
   };
-  console.log('result', results);
+  // console.log('result', results);
 
 
   const [dates, setDates] = useState({
     startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     endDate: new Date(),
+    // startDate: new Date('2015-10-15'),  // Hardcoded start date
+    // endDate: new Date('2015-10-16')     // Hardcoded end date
+
   });
   const [hasFetchedInitialData, setHasFetchedInitialData] = useState(false);
 
@@ -127,6 +130,7 @@ const MainApp2 = () =>{
     }
     // Add other objects here...
   ];
+  // for frontend dev
   const FetchData = (fromDate, toDate) => {
     setIsLoading(true); // Start loading
   
@@ -216,14 +220,16 @@ const MainApp2 = () =>{
       ...condition // assuming condition is an object containing additional search parameters
     });
   };
-
+   
   const PredictBasedOnArea = (selectedArea)=>{
     if (selectedArea) {
+      // setResults(d);
+      // setRecordCount(d.length); 
       // console.log('selected region', selectedArea.name);
-      const url = `${apiUrl}/api/fetchForecastPredict`; // Change to your actual API URL
+      const url = `${apiUrl}/api/fetchForecastPredict`; 
       axios.post(url, selectedArea)
           .then(response => {
-              // console.log('Prediction response:', response.data);
+              console.log('Prediction response:', response.data);
               setResults(response.data.points);
               setRecordCount(response.data.points.length); // Update record count based on response
               setIsLoading(false); // Stop loading
