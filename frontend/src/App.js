@@ -7,6 +7,7 @@ import Footer from "./module/Footer";
 import "./module/css/app.css";
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import About from "./module/About";
+import { Welcome } from "./Welcome";
 
 function App() {
 
@@ -23,9 +24,10 @@ function App() {
       <div className="major-container">
         {/* <Header /> */}
         <Routes>
-          <Route path="/" element={<MainApp2 />} />
+          <Route path="/" element={<Welcome />} />
+          <Route path="/tidetrack" element={<MainApp2 />} />
           <Route path="/about" element={<About />} />
-        </Routes>
+          </Routes>
         <Footer />
       </div>
     </Router>

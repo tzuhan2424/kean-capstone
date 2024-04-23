@@ -11,6 +11,8 @@ import axios from 'axios';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate, passDateCheck, passDateRangeCheck } from './helper/MainAppHelper';
 import areas from './helper/bbox.json'; // Import the JSON file
+import FloatingActionButton from './component/FloatingActionButton';
+import { Fab } from '@mui/material';
 
 const MainApp2 = () =>{
   const [open, setOpen] = React.useState(false);
@@ -286,12 +288,13 @@ const MainApp2 = () =>{
           )} 
       </div> 
 
-
+      
       <MainContent 
         points={results} 
         area={selectedArea} 
         isPredict={isPredict}
         open={open} />
+        <FloatingActionButton/>
     </div>
   );
 }
