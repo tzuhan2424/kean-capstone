@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DiscreteSlider from './DiscreteSlider'; // Assuming DiscreteSlider is in the same directory
-
+import "../css/NavBar.css"
 const ConditionSelector = ({onConditionChange}) => {
     const [category, setCategory] = useState('');
     const [intensity, setIntensity] = useState(null);
@@ -30,10 +30,9 @@ const ConditionSelector = ({onConditionChange}) => {
 
 
     return (
-        <div>
-            <div>Condition selector</div>
-            <div>
-                <div>1. Intensity selector</div>
+        <div className="SearchTab-container Intensity-container">
+            <React.Fragment>
+                <div id = 'intensity-picker-title'>Intensity selector</div>
                 <input
                     type="radio"
                     id="dropdown"
@@ -53,10 +52,10 @@ const ConditionSelector = ({onConditionChange}) => {
                     onChange={() => handleSelectionTypeChange('slider')}
                 />
                 <label htmlFor="slider">Cell Count</label>
-            </div>
+            </React.Fragment>
 
             {selectionType === 'dropdown' && (
-                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <select className="custom-select-dropdown" value={category} onChange={(e) => setCategory(e.target.value)}>
                     <option value="">Select Category</option>
                     <option value="all">All</option>
                     <option value="high">High(High (1,000,000+ cells/L))</option>

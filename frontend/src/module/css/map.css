@@ -9,3 +9,83 @@
     padding-top: 60px; 
     padding-left: 300px;
 }
+#map-app-content-drawer{
+    background-color: #c1b0fae0; /* Blue background */
+    width: 100%; 
+    height: 100%;
+    overflow-y: auto; 
+    font-family: "Slabo 27px", serif;
+
+}
+
+
+.header-container.header-container--border-end {
+    /* Your custom styles here */
+    background-color: #b54848;
+    border: 1px solid #CCCCCC;
+    /* Add any other styles you want to overwrite or add */
+}
+.table-desc{
+    font-weight: 900;
+}
+.popup-header{
+  background-color: lightblue;
+}
+.popup-header.popup-header-description{
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 5px;
+    border-radius: 8px;
+}
+.popup-body{
+    background-color: #E6F1E1;
+}
+
+/* .esri-feature-content{
+    background-color: #04AA6D;
+} */
+/* border-radius: 8px; Rounded corners */
+
+
+/* Custom Popup Styles */
+.arcgis-popup-title {
+    background-color: #F0F0F0;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    padding: 5px;
+    font-weight: bold;
+  }
+  
+  .arcgis-popup-content {
+    font-size: 0.9em;
+    line-height: 1.4;
+    padding: 10px;
+  }
+  
+  .arcgis-popup-content table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .arcgis-popup-content td,
+  .arcgis-popup-content th {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+  
+  .arcgis-popup-content tr:nth-child(even) {
+    background-color: #f2f2f2;
+  }
+  
+  .arcgis-popup-content tr:hover {
+    background-color: #ddd;
+  }
+  
+  .arcgis-popup-content th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #04AA6D;
+    color: white;
+  }
+  

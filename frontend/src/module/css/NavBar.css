@@ -8,3 +8,86 @@
     overflow-y: auto; /* Allows scrolling of the sidebar */
     padding-top: 60px; /* Give some space on top */
 }
+
+#navbar-container-drawer{
+    font-family: "PT Sans Narrow", sans-serif;
+}
+
+.MuiButtonBase-root.MuiTab-root.custom-tab {
+    font-family: "Domine", serif;
+    font-optical-sizing: auto;
+    font-weight: 700;
+    font-style: normal;
+    color:white;
+    background-color: #003366;
+
+    border-radius: 10px 10px 0px 0px;
+    padding: 6px 12px; /* Adjust padding to control the size of the background */
+    margin-right: 8px; /* Adds space between the tabs */
+
+}
+.MuiButtonBase-root.MuiTab-root.custom-tab:hover {
+    background-color: #F5A623; /* Lighter yellow on hover */
+  }
+.MuiButtonBase-root.MuiTab-root.custom-tab.Mui-selected {
+    background-color: #4da1fba8; /* Keep the same yellow color for selected tab */
+    color: #000; /* Keep text color for selected tab */
+}
+
+div.AppBarHeader{
+    font-family: "PT Sans Narrow", sans-serif;
+    font-weight: 700;
+    font-style: normal;
+
+}
+.appBarLogo {
+    height: 40px;  /* Maximum height for the image */
+    width: auto;   /* Maintain aspect ratio */
+    margin-right: 20px; /* Space between the logo and the next element */
+  }
+.SearchTab-container{
+    font-size: 1.2rem;
+    margin: 25px 5px;
+}
+.SearchTab-container .Intersity-container{
+    margin: 25px 5px 5px 5px;
+}
+.date-range-picker-input{
+    font-size: 1.2rem;
+}
+#date-range-picker-title{
+    font-weight:900
+}
+#intensity-picker-title{
+    font-weight:900
+}
+
+.custom-select-dropdown{
+    max-width: 100%; 
+    font-size: 1.2rem;
+}
+
+
+.PredictTab-container{
+    font-size: 1.2rem;
+    margin: 10px 5px 10px 5px;
+    display: flex;
+    flex-wrap: wrap;
+}
+.PredictTab-container div {
+    flex: 1 1 50%; /* flex-grow, flex-shrink, flex-basis */
+    /* Optional: adjust padding or margin for spacing */
+}
+#area-picker-title{
+    font-weight:900;
+    font-size:1.2rem;
+}
+.Legend-container{
+    margin: 25px 5px;
+
+
+}
+.Legend-container.legend-title{
+    font-size:1rem;
+    font-weight: 900;
+}

@@ -1,3 +1,5 @@
+import './css/map.css';
+
 import React, { useEffect, useState } from 'react';
 import Map from '@arcgis/core/Map';
 import MapView from '@arcgis/core/views/MapView';
@@ -9,10 +11,11 @@ import  SimpleLineSymbol  from '@arcgis/core/symbols/SimpleLineSymbol';
 import Color from '@arcgis/core/Color';
 
 import mapConfig from './config/mapConfig';
-import './css/map.css';
 import {drawBoundingBoxes} from "./helper/bbox";
 import bbox from "./helper/bbox.json";
 import categoryMapping from "./config/categoryMapping"
+
+
 const MapComponent = ({ points, area, isPredict }) => {
   const [mapView, setMapView] = useState(null);
   
@@ -170,10 +173,59 @@ const MapComponent = ({ points, area, isPredict }) => {
 
 
   const createAndAddGraphic = (point) => {
-    const { longitude, latitude, category, ...otherAttributes } = point;
-    const attributes = { ...otherAttributes, category, longitude, latitude };
+    // console.log('p',point);
+    // const { longitude, latitude, category, description, ...otherAttributes } = point;
+    const {
+      longitude,
+      latitude,
+      category,
+      description,
+      cellcount,
+      salinity,
+      water_temp,
+      wind_dir,
+      wind_speed,
+      sample_datetime,
+      ...otherAttributes
+    } = point;
+
+
     const symbol = getSymbol(category);
+    const formatDate = (datetime) => {
+      const date = new Date(datetime);
+      return date.toLocaleString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: true
+      });
+    };
+
+
     
+    let popupContent = `
+      <div class="popup-header">
+        <div class="popup-header-description" style="font-size: 1.2em; font-weight: bold">${description}</div>
+        <div style="font-size: 1.2em; font-weight:bold">(${latitude.toFixed(5)}, ${longitude.toFixed(5)})</div>
+      </div>
+      <hr style="margin: 8px 0;">
+      <table class="popup-body" style="width: 100%;">
+        <tr><td class='table-desc'>Species</td><td>${otherAttributes.genus} ${otherAttributes.species}</td></tr>
+        <tr><td class='table-desc'>Date Collected</td><td>${formatDate(sample_datetime)}</td></tr>
+        <tr><td class='table-desc'>Category</td><td>${category}</td></tr>
+        <tr><td class='table-desc'>Sample Depth (m)</td><td>${otherAttributes.sample_depth || 'N/A'}</td></tr>
+        <tr><td class='table-desc'>Cell Count (cells/L)</td><td>${cellcount || 'Not Available'} </td></tr>
+        <tr><td class='table-desc'>Salinity (ppt)</td><td>${salinity || 'Not Available' }</td></tr>
+        <tr><td class='table-desc'>Water Temperature (°C)</td><td>${water_temp || 'Not Available'}</td></tr>
+        <tr><td class='table-desc'>Wind Direction</td><td>${wind_dir || 'Not Available'}</td></tr>
+        <tr><td class='table-desc'>Wind Speed (miles/h)</td><td>${wind_speed || 'Not Available'}</td></tr>
+      </table>`;
+    
+
+
     const pointGraphic = new Graphic({
       geometry: {
         type: 'point',
@@ -182,26 +234,11 @@ const MapComponent = ({ points, area, isPredict }) => {
       },
       symbol: symbol,
 
-      attributes,
+      attributes: otherAttributes,
       popupTemplate: {
-        title: "{description}",
-        content: [{
-          type: "fields",
-          fieldInfos: [
-            { fieldName: "longitude", label: "longitude" },
-            { fieldName: "latitude", label: "latitude" },
-            { fieldName: "genus", label: "genus" },
-            { fieldName: "species", label: "species" },
-            { fieldName: "category", label: "category"},
-            { fieldName: "description", label: "Description" },
-            { fieldName: "sample_datetime", label: "Sample Date" },
-            { fieldName: "cellcount", label: "Cell Count(cells/L)" },
-            { fieldName: "salinity", label: "Salinity (ppt)" },
-            { fieldName: "water_temp", label: "Water Temperature (°C)" },
-            { fieldName: "wind_dir", label: "Wind Direction" },
-            { fieldName: "wind_speed", label: "Wind Speed (miles/h)" }
-          ]
-        }]
+        title: `<span style="background-color: #F0F0F0;">HABSOS Data<span>    
+        `,
+        content: popupContent
       }
     });
 
@@ -212,6 +249,8 @@ const MapComponent = ({ points, area, isPredict }) => {
     
     return categoryMapping[numericCategory] || 'Unknown'; // Default to 'Unknown' if no mapping exists
   }
+
+
 
   function aggregatePointsByLocation(points) {
     // console.log('aggregate');
@@ -236,7 +275,6 @@ const MapComponent = ({ points, area, isPredict }) => {
       });
       return acc;
     }, {});
-  
     return Object.values(groupedByLocation).map(location => {
       const totalCategory = location.predictions.reduce((acc, pred) => {
         return acc + parseInt(pred.predict_category, 10);  // Use parseInt for integers, parseFloat for decimal numbers
@@ -257,7 +295,8 @@ const MapComponent = ({ points, area, isPredict }) => {
     const { longitude, latitude, predictions, avg_category} = locationWithPredictions;
   
     // Construct the HTML content for the popup
-    let popupContent = `<table>
+    let popupContent = `
+    <table class='popup-body'>
       <tr><th>Date</th><th>Predict Category</th><th>Salinity</th><th>Water Temp</th><th>Wind Dir</th><th>Wind Speed</th></tr>`;
     predictions.forEach(pred => {
       popupContent += `<tr>
@@ -280,7 +319,7 @@ const MapComponent = ({ points, area, isPredict }) => {
       symbol: getPredictSymbol(avg_category), // Assuming the first prediction has the symbol
       attributes: locationWithPredictions,
       popupTemplate: {
-        title: "Predictions for {latitude}, {longitude}, {avg_category}",
+        title: "Forecast for {latitude}, {longitude}",
         content: popupContent
       }
     });
@@ -385,7 +424,7 @@ const MapComponent = ({ points, area, isPredict }) => {
   }, [points, mapView, area]);
 
   return (
-    <div id="map-app-content">
+    <div id="map-app-content-drawer">
       <div id="map-container" style={{ height: '100%', width: '100%' }}></div>
     </div>
   );
