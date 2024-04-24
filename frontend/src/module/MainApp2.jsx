@@ -134,24 +134,24 @@ const MainApp2 = () =>{
     // Add other objects here...
   ];
   // for frontend dev
-  const FetchData = (fromDate, toDate) => {
-    setIsLoading(true); // Start loading
+  // const FetchData = (fromDate, toDate) => {
+  //   setIsLoading(true); // Start loading
   
-    // Filter data based on fromDate and toDate
-    const filteredData = sampleData.filter(item => {
-      const sampleDate = new Date(item.sample_datetime);
-      const from = new Date(fromDate);
-      const to = new Date(toDate);
-      return sampleDate >= from && sampleDate <= to;
-    });
+  //   // Filter data based on fromDate and toDate
+  //   const filteredData = sampleData.filter(item => {
+  //     const sampleDate = new Date(item.sample_datetime);
+  //     const from = new Date(fromDate);
+  //     const to = new Date(toDate);
+  //     return sampleDate >= from && sampleDate <= to;
+  //   });
   
-    // Simulate a delay to mimic async data fetching
-    setTimeout(() => {
-      setResults(sampleData);
-      setRecordCount(sampleData.length); // Update record count based on filtered data
-      setIsLoading(false); // Stop loading
-    }, 300); // Delay of 1 second
-  };
+  //   // Simulate a delay to mimic async data fetching
+  //   setTimeout(() => {
+  //     setResults(sampleData);
+  //     setRecordCount(sampleData.length); // Update record count based on filtered data
+  //     setIsLoading(false); // Stop loading
+  //   }, 300); // Delay of 1 second
+  // };
 
 
 
@@ -161,28 +161,28 @@ const MainApp2 = () =>{
 
 
   // production db fetch
-  // const FetchData = (fromDate, toDate) => {
-  //   setIsLoading(true); // Start loading
-  //   const genus = 'Karenia';
-  //   const species = 'brevis';
-  //   axios.post(`${apiUrl}/api/searchHabsosDb`, {
-  //     genus,
-  //     species,      
-  //     fromDate,
-  //     toDate,
-  //   })
-  //   .then(response => {
-  //     // console.log('fetch');
-  //     // console.log(response.data);
-  //     setResults(response.data);
-  //     setRecordCount(response.data.length); // Update record count based on response
-  //     setIsLoading(false); // Stop loading
-  //   })
-  //   .catch(error => {
-  //     console.error('Error:', error);
-  //     setIsLoading(false); // Stop loading in case of error
-  //   });
-  // };
+  const FetchData = (fromDate, toDate) => {
+    setIsLoading(true); // Start loading
+    const genus = 'Karenia';
+    const species = 'brevis';
+    axios.post(`${apiUrl}/api/searchHabsosDb`, {
+      genus,
+      species,      
+      fromDate,
+      toDate,
+    })
+    .then(response => {
+      // console.log('fetch');
+      // console.log(response.data);
+      setResults(response.data);
+      setRecordCount(response.data.length); // Update record count based on response
+      setIsLoading(false); // Stop loading
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      setIsLoading(false); // Stop loading in case of error
+    });
+  };
 
   const FetchDatafromCondition = (searchParams) => {
     setIsLoading(true); // Start loading

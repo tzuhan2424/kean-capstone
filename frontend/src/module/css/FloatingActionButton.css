@@ -30,7 +30,7 @@
 .fab-item {
     width: 60px;
     height: 60px;
-    background-color: #f1f1f1;
+    background-color: #9b9eae;
     margin-bottom: 10px;
     display: flex;
     align-items: center;
@@ -42,8 +42,19 @@
     cursor: pointer;
     position: absolute;
 }
+.fab-item:hover{
+    background-color: #F5A623;
+}
 
+.fab-item img {
+    width: 60%; /* Scale the width to the container */
+    height: auto; /* Adjust the height automatically to maintain the aspect ratio */
+    max-width: 100%; /* Ensure it doesn't scale beyond the size of the container */
+    max-height: 100%; /* Ensure it doesn't scale beyond the height of the container */
+}
+
+/* Apply this class when a fab-item is visible */
 .fab-item-visible {
     opacity: 1;
-    transform: translateY(calc(var(--i) * -70px));
+    transform: translateY(calc(var(--i) * -70px)) scale(1);
 }

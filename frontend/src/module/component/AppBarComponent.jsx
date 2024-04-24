@@ -54,7 +54,7 @@ export default function AppBarComponent({ open, handleDrawerOpen }) {
           }}>
           <img src="/assets/KU_Logo.svg.png" alt="Kean University Logo" className="appBarLogo" />
           <Typography variant="h6" noWrap component="div" className="AppBarHeader">
-            Kean HABSOS System
+            TideTrack System
           </Typography>
 
         </Box>
