@@ -11,20 +11,19 @@ export const Welcome = () => {
           alignItems: 'center', // This will vertically center the text and image in the flex container
           justifyContent: 'center', // This will horizontally center the content in the flex container
           padding: '20px', 
-          backgroundColor: '#4da1fba8', 
+          backgroundColor: '#00305C', 
           textAlign: 'center',
           flexDirection:'column'
         }}>
-          <span style={{ fontWeight: 'bold', fontSize: '30px'}}>TideTrack</span>
-          {/* <img src="/favicon.ico" alt="Descriptive text" style={{ maxHeight: '100px' }} /> Set a max height for your image */}
+          <span style={{ fontWeight: 'bold', fontSize: '30px', color:'white'}}>TideTrack</span>
         </div>
-      <div>
+      <>
         <CarouselFade />
-      </div>
+      </>
 
-      <div>
+      <>
         <Intro/>
-      </div>
+      </>
 
     </div>
   )
