@@ -16,12 +16,10 @@ def load_and_preprocess_data():
         SELECT * 
         FROM habsos_j
         WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL
-        AND SAMPLE_DATE IS NOT NULL
         AND CATEGORY IS NOT NULL
         AND SALINITY IS NOT NULL
         AND WATER_TEMP IS NOT NULL
-        AND WIND_DIR IS NOT NULL 
-        AND WIND_SPEED IS NOT NULL;
+        and SAMPLE_DATETIME < '2023-01-01 00:00:00';
     """
     records, columns = db.execute_query(query)
     db.close()
@@ -31,7 +29,7 @@ def load_and_preprocess_data():
     le = LabelEncoder()
     df['category_encoded'] = le.fit_transform(df['CATEGORY'])
 
-    features = ['LATITUDE', 'LONGITUDE', 'SALINITY', 'WATER_TEMP', 'WIND_DIR', 'WIND_SPEED']
+    features = ['LATITUDE', 'LONGITUDE', 'SALINITY', 'WATER_TEMP']
     X = df[features]
     y = df['category_encoded']
     return train_test_split(X, y, test_size=0.2, random_state=42), le
@@ -62,13 +60,16 @@ def create_data_loaders(X_train_scaled, X_test_scaled, y_train, y_test, batch_si
 # Training the model
 def train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs=128):
     print('Start training')
-
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
     # Track the best loss
     best_loss = float('inf')
     best_model = None
 
     for epoch in range(num_epochs):
         model.train()  # Set the model to training mode
+        train_loss = 0
+
         for X_batch, y_batch in train_loader:
             outputs = model(X_batch)
             loss = criterion(outputs, y_batch)
@@ -76,6 +77,10 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            train_loss += loss.item()
+
+        train_loss /= len(train_loader)
+
 
         # Evaluate on the validation set
         model.eval()  # Set the model to evaluation mode
@@ -85,11 +90,14 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
                 outputs = model(X_val)
                 val_loss += criterion(outputs, y_val).item()
             val_loss /= len(val_loader)
+        print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}')
 
         if val_loss < best_loss:
             best_loss = val_loss
             best_model = model.state_dict()
-            torch.save(best_model, 'best_nn_model.pth')  # Save the best model
+            torch.save(best_model, 'best_nn_model-0424.pth')  # Save the best model
+            print(f'New best model found at epoch {epoch+1}!')
+
 
         if (epoch + 1) % 10 == 0:
             print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}, Val Loss: {val_loss:.4f}')
@@ -98,7 +106,11 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
 
 # Evaluate the model
 def evaluate_model(test_loader, le, model_path):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     model.load_state_dict(torch.load(model_path))
+    model.to(device)
+
     model.eval()  # Set the model to evaluation mode
     all_predictions = []
     all_labels = []
@@ -115,12 +127,12 @@ def evaluate_model(test_loader, le, model_path):
 if __name__ == "__main__":
     d, le = load_and_preprocess_data()
     X_train, X_test, y_train, y_test = d
-    features_to_scale = ['SALINITY', 'WATER_TEMP', 'WIND_DIR', 'WIND_SPEED']
+    features_to_scale = ['SALINITY', 'WATER_TEMP']
     X_train_scaled, X_test_scaled = scale_features(X_train, X_test, features_to_scale)
 
     train_loader, test_loader = create_data_loaders(X_train_scaled, X_test_scaled, y_train, y_test)
 
-    input_size = 6
+    input_size = 4
     num_classes = 5
     model = Net(input_size,num_classes)
 
@@ -128,4 +140,4 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     train_model(model, train_loader, test_loader, criterion, optimizer, num_epochs=120)
-    evaluate_model(test_loader, le, model_path="best_nn_model.pth")
+    evaluate_model(test_loader, le, model_path="best_nn_model-0424.pth")
