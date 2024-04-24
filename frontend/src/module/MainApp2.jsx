@@ -13,6 +13,7 @@ import { formatDate, passDateCheck, passDateRangeCheck } from './helper/MainAppH
 import areas from './helper/bbox.json'; // Import the JSON file
 import FloatingActionButton from './component/FloatingActionButton';
 import { Fab } from '@mui/material';
+import Footer from './Footer';
 
 const MainApp2 = () =>{
   const [open, setOpen] = React.useState(false);
@@ -295,6 +296,7 @@ const MainApp2 = () =>{
         isPredict={isPredict}
         open={open} />
         <FloatingActionButton/>
+        <Footer/>
     </div>
   );
 }
