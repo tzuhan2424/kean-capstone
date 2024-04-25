@@ -229,6 +229,7 @@ const MainApp2 = () =>{
       // setResults(d);
       // setRecordCount(d.length); 
       // console.log('selected region', selectedArea.name);
+      setIsLoading(true); // Start loading
       const url = `${apiUrl}/api/fetchForecastPredict`; 
       axios.post(url, selectedArea)
           .then(response => {
