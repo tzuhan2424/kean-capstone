@@ -295,8 +295,8 @@ const MainApp2 = () =>{
         area={selectedArea} 
         isPredict={isPredict}
         open={open} />
-        <FloatingActionButton/>
-        <Footer/>
+      <FloatingActionButton/>
+      <Footer/>
     </div>
   );
 }

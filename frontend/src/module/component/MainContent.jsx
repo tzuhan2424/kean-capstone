@@ -14,12 +14,15 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
       duration: theme.transitions.duration.leavingScreen,
     }),
     marginLeft: `-${drawerWidth}px`,
+    marginTop:'60px',
     ...(open && {
       transition: theme.transitions.create('margin', {
         easing: theme.transitions.easing.easeOut,
         duration: theme.transitions.duration.enteringScreen,
       }),
       marginLeft: 0,
+      marginTop:'60px',
+
     }),
   }),
 );
@@ -32,7 +35,7 @@ export default function MainContent({ open, points,area, isPredict  }) {
   return (
     <Main open={open}>
       {/* <div style={{ ...theme.mixins.toolbar}} /> */}
-      <div style={{ minHeight: '64px' }} />
+      {/* <div style={{ minHeight: '100px' }} /> */}
       <MapComponent 
           points={points} 
           area={area} 
