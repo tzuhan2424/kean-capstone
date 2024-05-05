@@ -12,7 +12,6 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate, passDateCheck, passDateRangeCheck } from './helper/MainAppHelper';
 import areas from './helper/bbox.json'; // Import the JSON file
 import FloatingActionButton from './component/FloatingActionButton';
-import { Fab } from '@mui/material';
 import Footer from './Footer';
 
 const MainApp2 = () =>{
@@ -296,8 +295,8 @@ const MainApp2 = () =>{
         area={selectedArea} 
         isPredict={isPredict}
         open={open} />
-        <FloatingActionButton/>
-        <Footer/>
+      <FloatingActionButton/>
+      <Footer/>
     </div>
   );
 }

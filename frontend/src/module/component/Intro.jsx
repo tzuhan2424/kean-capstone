@@ -49,6 +49,45 @@ export const Intro = () => {
       </div>
 
 
+
+      <span className='Intro-title'>Data Extraction</span>
+      <div className='Intro-content-container'>
+        <p className='Intro-content'>
+        Automation is used to extract, transform and load (ETL) data into a centralized database. 
+        This is done by running an ETL script periodically via a task scheduler on the web server. 
+        The script extracts datasets from the National Oceanic and Atmospheric Administration (NOAA) website using 
+        each dataset's respective API or data transfer protocol. 
+        The data are then cleaned and transformed into a common format before loading them into the database. 
+        </p>
+        
+      </div>
+
+      <span className='Intro-title'>Resource</span>
+      <div className='Intro-content-container'>
+        <p className='Intro-content'>
+            The datasets are the following:
+            <ul>
+              <li>
+              <a href="https://www.ncei.noaa.gov/access/metadata/landing-page/bin/iso?id=gov.noaa.nodc:0120767" target="_blank" rel="noopener noreferrer">NOAA HABSOS</a>
+              </li>
+              <li>
+              <a href="https://www.ncei.noaa.gov/access/search/data-search/global-marine" target="_blank" rel="noopener noreferrer">NOAA Global Marine dataset collection</a>
+              </li>
+              <li>
+                <a href="https://tidesandcurrents.noaa.gov/ofs/ngofs2/ngofs2.html" target="_blank" rel="noopener noreferrer">NOAA NGOFS2</a>
+              </li>
+              <li>
+                <a href="https://tidesandcurrents.noaa.gov/ofs/tbofs/tbofs.html" target="_blank" rel="noopener noreferrer">NOAA TBOFS</a>
+              </li>
+              <li>
+                <a href="https://tidesandcurrents.noaa.gov/ofs/sjofs/sjofs.html" target="_blank" rel="noopener noreferrer">NOAA SJROFS</a>
+              </li>
+            </ul>
+        </p>
+      </div>
+
+
+
       
     </div>
   )

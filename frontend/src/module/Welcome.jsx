@@ -17,14 +17,13 @@ export const Welcome = () => {
         }}>
           <span style={{ fontWeight: 'bold', fontSize: '30px', color:'white'}}>TideTrack</span>
         </div>
-      <>
+      
         <CarouselFade />
-      </>
+      
 
-      <>
+      
         <Intro/>
-      </>
-
+      
     </div>
   )
 }
