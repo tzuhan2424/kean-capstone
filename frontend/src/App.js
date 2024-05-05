@@ -19,7 +19,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Welcome />} />
           <Route path="/tidetrack" element={<MainApp2 />} />
-          <Route path="/about" element={<About />} />
+          {/* <Route path="/about" element={<About />} /> */}
           </Routes>
       </div>
     </Router>
