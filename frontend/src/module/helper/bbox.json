@@ -12,9 +12,7 @@
     { "name": "Area 11", "coordinates": [-83.01, 25.89, -79.41, 24.68] },
     { "name": "Area 12", "coordinates": [-81.92, 30.83, -80.62, 29.31] },
     { "name": "Area 13", "coordinates": [-81.04, 29.31, -80.07, 27.53] },
-    { "name": "Area 14", "coordinates": [-80.25, 27.53, -79.41, 25.89] },
-    { "name": "All", "coordinates": "all" }
-
+    { "name": "Area 14", "coordinates": [-80.25, 27.53, -79.41, 25.89] }
 
   ]
   
